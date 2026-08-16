@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scriptura — A Bíblia como rede social</title>
+  <style>
+    :root{
+      --bg:#0b0d10;
+      --panel:#11151a;
+      --panel2:#171c22;
+      --text:#f5f7fa;
+      --muted:#8f9aa7;
+      --line:#242b33;
+      --accent:#d7b46a;
+      --accent2:#f2d89b;
+      --danger:#ff5e72;
+      --shadow:0 20px 60px rgba(0,0,0,.28);
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:radial-gradient(circle at 20% 0%, #17120b 0, var(--bg) 28%);
+      color:var(--text);
+    }
+    button,input{font:inherit}
+    button{cursor:pointer}
+    .app{max-width:1220px;margin:auto;min-height:100vh;display:grid;grid-template-columns:250px minmax(0,620px) 300px;gap:28px;padding:0 20px}
+    .sidebar,.rightbar{position:sticky;top:0;height:100vh;padding:28px 0}
+    .brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:22px;margin-bottom:34px}
+    .brand-mark{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(145deg,var(--accent2),#9b7024);color:#17110a;font-size:20px}
+    .nav{display:flex;flex-direction:column;gap:8px}
+    .nav button{
+      background:none;border:0;color:var(--muted);text-align:left;padding:13px 14px;border-radius:14px;
+      display:flex;gap:12px;align-items:center;font-weight:650;
+    }
+    .nav button:hover,.nav button.active{background:var(--panel2);color:var(--text)}
+    .nav .icon{width:22px;text-align:center}
+    .compose{margin-top:20px;width:100%;border:0;border-radius:999px;padding:13px;background:var(--accent);color:#17110a;font-weight:800}
+    main{border-left:1px solid var(--line);border-right:1px solid var(--line);min-height:100vh}
+    .topbar{position:sticky;top:0;z-index:20;background:rgba(11,13,16,.88);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:15px}
+    .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--panel);padding:5px;border-radius:14px}
+    .tabs button{border:0;background:transparent;color:var(--muted);padding:10px;border-radius:10px;font-weight:750}
+    .tabs button.active{background:var(--panel2);color:var(--text);box-shadow:0 4px 20px rgba(0,0,0,.2)}
+    .searchbox{margin-top:12px;position:relative}
+    .searchbox input{width:100%;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:999px;padding:12px 16px 12px 42px;outline:none}
+    .searchbox input:focus{border-color:#6d5730}
+    .searchbox span{position:absolute;left:15px;top:11px;color:var(--muted)}
+    .search-results{display:none;margin-top:8px;background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+    .search-results.show{display:block}
+    .result{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid var(--line)}
+    .result:last-child{border-bottom:0}
+    .result:hover{background:var(--panel2)}
+    .avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#352814,#16191e);border:1px solid #4a3a20;color:var(--accent2);font-weight:900}
+    .result .meta{min-width:0}
+    .result .title{font-weight:800}
+    .result .sub{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .view{display:none}
+    .view.active{display:block}
+    .feed-status{min-height:380px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);text-align:center;padding:30px}
+    .feed-status strong{color:var(--text)}
+    .feed-spinner{width:30px;height:30px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .feed-end{text-align:center;padding:25px;color:var(--muted);font-size:13px;border-bottom:1px solid var(--line)}
+    .api-error{padding:30px;text-align:center;color:var(--muted)}
+    .api-error b{display:block;color:var(--text);margin-bottom:8px}
+    .api-error button{margin-top:15px;border:0;background:var(--accent);color:#17110a;padding:10px 16px;border-radius:999px;font-weight:800}
+    .composer{padding:18px;border-bottom:1px solid var(--line);display:flex;gap:12px}
+    .composer textarea{flex:1;resize:none;border:0;outline:none;background:transparent;color:var(--text);font-size:18px;min-height:62px}
+    .post{padding:18px;border-bottom:1px solid var(--line);transition:.2s}
+    .post:hover{background:rgba(255,255,255,.015)}
+    .post-head{display:flex;gap:11px;align-items:center}
+    .post-head .name{font-weight:800}
+    .verified{color:var(--accent);font-size:12px}
+    .handle,.time{color:var(--muted);font-size:14px}
+    .verse-ref{color:var(--accent2);font-size:13px;font-weight:800;margin:14px 0 8px;letter-spacing:.05em;text-transform:uppercase}
+    .verse{font-family:Georgia, "Times New Roman", serif;font-size:24px;line-height:1.55;margin:0;color:#f7f0df}
+    .verse-art{aspect-ratio:1/1;margin:14px -18px 0;padding:52px 42px;display:flex;align-items:center;justify-content:center;text-align:center;background:linear-gradient(145deg,#f7f1e7,#eee4d4);position:relative;overflow:hidden;border-top:1px solid #e6dccd;border-bottom:1px solid #e6dccd}
+    .verse-art:before,.verse-art:after{content:"";position:absolute;width:230px;height:230px;border-radius:50%;background:radial-gradient(circle,#8d765a 0 2%,transparent 3%);opacity:.10}
+    .verse-art:before{left:-90px;top:30px;box-shadow:55px 55px 0 #8d765a}
+    .verse-art:after{right:-100px;bottom:0;box-shadow:-60px -60px 0 #8d765a}
+    .verse-art-inner{position:relative;z-index:2;max-width:500px}
+    .verse-art-icon{font-size:30px;color:#a48660;margin-bottom:20px}
+    .verse-art .verse{color:#142b3b;font-size:31px;line-height:1.28}
+    .verse-art-line{height:1px;background:#cbb89e;width:72%;margin:25px auto 17px}
+    .verse-art-ref{font-size:13px;letter-spacing:.22em;font-weight:800;color:#40505b;text-transform:uppercase}
+    .verse-art-version{font-size:10px;letter-spacing:.12em;color:#8d7c69;margin-top:9px}
+    .entities{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
+    .chip{border:1px solid var(--line);background:#101419;color:#c9d0d8;padding:6px 9px;border-radius:999px;font-size:12px}
+    .actions{display:flex;justify-content:space-between;margin-top:16px;color:var(--muted);max-width:420px}
+    .actions button{background:none;border:0;color:inherit;padding:5px 0}
+    .actions button:hover{color:var(--accent2)}
+    .liked{color:var(--danger)!important}
+    .vertical-wrap{height:calc(100vh - 122px);overflow-y:auto;scroll-snap-type:y mandatory}
+    .reel{height:calc(100vh - 122px);scroll-snap-align:start;position:relative;display:flex;align-items:flex-end;padding:30px;overflow:hidden;border-bottom:1px solid var(--line)}
+    .reel::before{content:"";position:absolute;inset:0;background:
+      linear-gradient(to top,rgba(0,0,0,.86),rgba(0,0,0,.14) 52%,rgba(0,0,0,.25)),
+      radial-gradient(circle at 72% 20%,rgba(215,180,106,.28),transparent 28%),
+      linear-gradient(145deg,#16191f,#090b0e 65%);
+    }
+    .reel:nth-child(2)::before{background:linear-gradient(to top,rgba(0,0,0,.88),rgba(0,0,0,.18)),radial-gradient(circle at 20% 22%,rgba(81,118,154,.25),transparent 30%),linear-gradient(145deg,#121820,#080b0d)}
+    .reel-content{position:relative;z-index:2;max-width:460px;padding-right:50px}
+    .reel-ref{font-weight:850;color:var(--accent2);letter-spacing:.08em;margin-bottom:10px}
+    .reel .verse{font-size:34px;line-height:1.33;text-shadow:0 2px 18px #000}
+    .reel-author{margin-top:20px;font-weight:750}
+    .reel-actions{position:absolute;right:20px;bottom:34px;z-index:3;display:flex;flex-direction:column;gap:19px}
+    .reel-actions button{width:44px;height:44px;border:1px solid rgba(255,255,255,.18);border-radius:50%;background:rgba(10,12,15,.55);color:white;font-size:18px}
+    .bible{padding:20px}
+    .book-card{background:linear-gradient(145deg,#171b20,#101318);border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:14px}
+    .book-card h3{margin:0 0 6px}
+    .book-card p{color:var(--muted);margin:0 0 16px}
+    .chapters{display:flex;flex-wrap:wrap;gap:7px}
+    .chapters button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:#0d1115;color:var(--text)}
+    .chapters button:hover{border-color:#6d5730;color:var(--accent2)}
+    .rightbar .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:16px}
+    .panel h3{margin:0 0 13px;font-size:17px}
+    .suggestion{display:flex;gap:10px;align-items:center;margin:12px 0}
+    .suggestion .avatar{width:36px;height:36px;font-size:13px}
+    .suggestion b{display:block;font-size:14px}
+    .suggestion small{color:var(--muted)}
+    .follow{margin-left:auto;border:0;background:transparent;color:var(--accent2);font-weight:800}
+    .quote{color:#d6dde5;line-height:1.5}
+    .mobilebar{display:none}
+    .mode-bottom-bar{
+      position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;
+      width:min(560px,calc(100% - 32px));display:grid;grid-template-columns:repeat(3,1fr);
+      gap:5px;padding:6px;background:rgba(17,21,26,.94);backdrop-filter:blur(18px);
+      border:1px solid var(--line);border-radius:18px;box-shadow:0 14px 45px rgba(0,0,0,.38)
+    }
+    .mode-bottom-bar button{
+      border:0;background:transparent;color:var(--muted);border-radius:13px;padding:9px 10px 8px;
+      display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:750
+    }
+    .mode-bottom-bar button.active{background:var(--panel2);color:var(--accent2)}
+    .mode-icon{font-size:19px;line-height:1.1}
+    main{padding-bottom:92px}
+    @media(max-width:980px){
+      .app{grid-template-columns:82px minmax(0,1fr);max-width:760px}
+      .rightbar{display:none}
+      .brand span,.nav .label,.compose{display:none}
+      .brand{justify-content:center}.nav button{justify-content:center}
+    }
+    @media(max-width:680px){
+      body{background:var(--bg)}
+      .app{display:block;padding:0}
+      .sidebar{display:none}
+      main{border:0}
+      .topbar{top:0}
+      .mobilebar{display:none}
+      .mode-bottom-bar{bottom:10px;width:calc(100% - 20px);border-radius:17px}
+      .post{padding:16px}
+      .verse{font-size:22px}
+      .verse-art{margin:14px -16px 0;padding:38px 27px}
+      .verse-art .verse{font-size:28px}
+      .vertical-wrap,.reel{height:calc(100vh - 170px)}
+      .reel .verse{font-size:29px}
+      .bible{padding-bottom:80px}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">✦</div><span>Scriptura</span></div>
+      <nav class="nav">
+        <button class="active"><span class="icon">⌂</span><span class="label">Início</span></button>
+        <button onclick="focusSearch()"><span class="icon">⌕</span><span class="label">Pesquisar</span></button>
+        <button><span class="icon">♧</span><span class="label">Explorar</span></button>
+        <button><span class="icon">♡</span><span class="label">Salvos</span></button>
+        <button><span class="icon">◉</span><span class="label">Perfil</span></button>
+      </nav>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <!-- Navegação principal movida para a barra inferior -->
+        <div class="searchbox">
+          <span>⌕</span>
+          <input id="search" placeholder="Buscar Mateus, Paulo, Salmos, João 3:16..." autocomplete="off" />
+          <div class="search-results" id="results"></div>
+        </div>
+      </div>
+
+      <section id="feed" class="view active">
+        <div id="bibleFeed">
+          <div class="feed-status">
+            <div class="feed-spinner"></div>
+            <strong>Carregando Gênesis...</strong>
+            <span>Buscando os versículos da Bíblia.</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="vertical" class="view">
+        <div class="vertical-wrap">
+          <article class="reel">
+            <div class="reel-content">
+              <div class="reel-ref">JOÃO 3:16</div>
+              <p class="verse">Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito...</p>
+              <div class="reel-author">@joao <span class="verified">◆ Escritura</span></div>
+            </div>
+            <div class="reel-actions">
+              <button onclick="like(this)">♡</button><button>♧</button><button>◌</button><button>↗</button>
+            </div>
+          </article>
+          <article class="reel">
+            <div class="reel-content">
+              <div class="reel-ref">SALMOS 46:1</div>
+              <p class="verse">Deus é o nosso refúgio e fortaleza, socorro bem presente na angústia.</p>
+              <div class="reel-author">@salmos <span class="verified">◆ Escritura</span></div>
+            </div>
+            <div class="reel-actions">
+              <button onclick="like(this)">♡</button><button>♧</button><button>◌</button><button>↗</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="bible" class="view">
+        <div class="bible">
+          <div class="book-card">
+            <h3>📖 João</h3>
+            <p>Novo Testamento · 21 capítulos · @joao</p>
+            <div class="chapters" id="joaoChapters"></div>
+          </div>
+          <div class="book-card">
+            <h3>📖 Salmos</h3>
+            <p>Antigo Testamento · 150 capítulos · @salmos</p>
+            <div class="chapters">
+              <button>1</button><button>23</button><button>46</button><button>91</button><button>119</button><button>150</button>
+            </div>
+          </div>
+          <div class="book-card">
+            <h3>📖 Mateus</h3>
+            <p>Novo Testamento · 28 capítulos · @mateus</p>
+            <div class="chapters">
+              <button>1</button><button>5</button><button>6</button><button>7</button><button>24</button><button>28</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="rightbar">
+      <div class="panel">
+        <h3>Perfis bíblicos</h3>
+        <div class="suggestion"><div class="avatar">Mt</div><div><b>@mateus ◆</b><small>Evangelho · 28 caps.</small></div><button class="follow">Seguir</button></div>
+        <div class="suggestion"><div class="avatar">Pa</div><div><b>@paulo</b><small>Apóstolo</small></div><button class="follow">Seguir</button></div>
+        <div class="suggestion"><div class="avatar">Gn</div><div><b>@genesis ◆</b><small>Livro · 50 caps.</small></div><button class="follow">Seguir</button></div>
+      </div>
+      <div class="panel">
+        <h3>Versículo em destaque</h3>
+        <div class="quote">“Lâmpada para os meus pés é tua palavra e luz, para o meu caminho.”</div>
+        <div class="verse-ref">Salmos 119:105</div>
+      </div>
+    </aside>
+  </div>
+
+  <nav class="mode-bottom-bar">
+    <button class="mode-tab active" data-view="feed" onclick="showView('feed')">
+      <span class="mode-icon">▦</span>
+      <span>Feed</span>
+    </button>
+    <button class="mode-tab" data-view="vertical" onclick="showView('vertical')">
+      <span class="mode-icon">▶</span>
+      <span>Vertical</span>
+    </button>
+    <button class="mode-tab" data-view="bible" onclick="showView('bible')">
+      <span class="mode-icon">▤</span>
+      <span>Bíblia</span>
+    </button>
+  </nav>
+
+  <script>
+    const tabs = document.querySelectorAll('.tab');
+    const views = document.querySelectorAll('.view');
+    const search = document.getElementById('search');
+    const results = document.getElementById('results');
+
+    const accounts = [
+      {name:'Mateus', handle:'@mateus', type:'Livro • Novo Testamento • 28 capítulos', icon:'Mt'},
+      {name:'Paulo', handle:'@paulo', type:'Personagem • Apóstolo', icon:'Pa'},
+      {name:'Gênesis', handle:'@genesis', type:'Livro • Antigo Testamento • 50 capítulos', icon:'Gn'},
+      {name:'Salmos', handle:'@salmos', type:'Livro • Antigo Testamento • 150 capítulos', icon:'Sl'},
+      {name:'João', handle:'@joao', type:'Livro • Novo Testamento • 21 capítulos', icon:'Jo'},
+      {name:'Jesus', handle:'@jesus', type:'Personagem • Cristo', icon:'✦'},
+      {name:'Pedro', handle:'@pedro', type:'Personagem • Apóstolo', icon:'Pe'}
+    ];
+
+    tabs.forEach(tab => tab.addEventListener('click', () => showView(tab.dataset.view)));
+
+    function showView(id){
+      views.forEach(v => v.classList.toggle('active', v.id === id));
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.view === id));
+      document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.view === id));
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    function focusSearch(){
+      search.focus();
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    search.addEventListener('input', () => {
+      const q = search.value.trim().toLowerCase();
+      if(!q){ results.classList.remove('show'); results.innerHTML=''; return; }
+
+      if(/^([a-zà-ú]+)\s+\d+:\d+$/i.test(q)){
+        results.innerHTML = `<div class="result"><div class="avatar">📖</div><div class="meta"><div class="title">${search.value}</div><div class="sub">Ir diretamente para esta passagem</div></div></div>`;
+        results.classList.add('show'); return;
+      }
+
+      const filtered = accounts.filter(a => (a.name+' '+a.handle+' '+a.type).toLowerCase().includes(q)).slice(0,5);
+      results.innerHTML = filtered.length
+        ? filtered.map(a => `<div class="result"><div class="avatar">${a.icon}</div><div class="meta"><div class="title">${a.name} <span class="verified">${a.type.startsWith('Livro')?'◆':''}</span></div><div class="sub">${a.handle} · ${a.type}</div></div></div>`).join('')
+        : `<div class="result"><div class="meta"><div class="title">Nenhum resultado</div><div class="sub">Tente buscar por um livro, personagem ou passagem.</div></div></div>`;
+      results.classList.add('show');
+    });
+
+    document.addEventListener('click', e => {
+      if(!e.target.closest('.searchbox')) results.classList.remove('show');
+    });
+
+    function like(btn){
+      btn.classList.toggle('liked');
+      if(btn.textContent.trim().startsWith('♡')) btn.textContent = btn.textContent.replace('♡','♥');
+      else if(btn.textContent.trim().startsWith('♥')) btn.textContent = btn.textContent.replace('♥','♡');
+    }
+
+    document.querySelectorAll('.follow').forEach(btn => btn.addEventListener('click', () => {
+      btn.textContent = btn.textContent === 'Seguir' ? 'Seguindo' : 'Seguir';
+    }));
+
+    const jc = document.getElementById('joaoChapters');
+    for(let i=1;i<=21;i++) jc.innerHTML += `<button>${i}</button>`;
+  
+    // Feed bíblico dinâmico. A fonte é um repositório JSON público no GitHub.
+    // Começamos em Gênesis e mantemos a ordem recebida: capítulo 1, verso 1, 2, 3...
+    const BIBLE_URL = 'https://raw.githubusercontent.com/MaatheusGois/bible/main/versions/pt-br/arc/gn/gn.json';
+    const bibleFeed = document.getElementById('bibleFeed');
+
+    function normalizeGenesis(data){
+      const verses = [];
+      // O dataset pode variar de formato. Estes caminhos cobrem as estruturas
+      // mais comuns do repositório sem acoplar a interface a uma única forma.
+      const root = data.book || data;
+      const chapters = root.chapters || root.chapter || (Array.isArray(root) ? root : []);
+
+      if(Array.isArray(chapters)){
+        chapters.forEach((chapter, ci) => {
+          const chapterNumber = Number(chapter.chapter || chapter.number || chapter.id || ci + 1);
+          const list = chapter.verses || chapter.verse || (Array.isArray(chapter) ? chapter : []);
+          if(Array.isArray(list)){
+            list.forEach((v, vi) => {
+              const text = typeof v === 'string' ? v : (v.text || v.verse_text || v.content || '');
+              if(text) verses.push({chapter:chapterNumber, verse:Number(v.verse || v.number || v.id || vi+1), text});
+            });
+          }
+        });
+      }
+
+      // Some full-book JSONs are a flat verse array.
+      if(!verses.length && Array.isArray(data)){
+        data.forEach((v, i)=>{
+          if(v && typeof v === 'object' && v.text){
+            verses.push({chapter:Number(v.chapter||1),verse:Number(v.verse||v.number||i+1),text:v.text});
+          }
+        });
+      }
+      return verses;
+    }
+
+    function versePost(v){
+      const article=document.createElement('article');
+      article.className='post';
+      article.innerHTML=`
+        <div class="post-head">
+          <div class="avatar">Gn</div>
+          <div>
+            <div><span class="name">@genesis</span> <span class="verified">◆ Escritura</span></div>
+            <div><span class="handle">Livro de Gênesis</span> · <span class="time">ARC</span></div>
+          </div>
+        </div>
+        <div class="verse-art">
+          <div class="verse-art-inner">
+            <div class="verse-art-icon">♧</div>
+            <p class="verse">“${escapeHtml(v.text)}”</p>
+            <div class="verse-art-line"></div>
+            <div class="verse-art-ref">Gênesis ${v.chapter}:${v.verse}</div>
+            <div class="verse-art-version">ALMEIDA REVISTA E CORRIGIDA</div>
+          </div>
+        </div>
+        <div class="actions">
+          <button onclick="like(this)">♡</button>
+          <button>◌</button>
+          <button>♧ Salvar</button>
+          <button>↗</button>
+        </div>`;
+      return article;
+    }
+
+    function escapeHtml(text){
+      return String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+    }
+
+    async function loadGenesis(){
+      const localWarning = location.protocol === 'file:'
+        ? '<span style="font-size:12px;max-width:390px;margin-top:6px">O arquivo está aberto localmente. Se o navegador bloquear o acesso à API, mostraremos uma mensagem de erro em até 10 segundos.</span>'
+        : '';
+      bibleFeed.innerHTML='<div class="feed-status"><div class="feed-spinner"></div><strong>Carregando Gênesis...</strong><span>Buscando os versículos da Bíblia.</span>'+localWarning+'</div>';
+      try{
+        // Evita loading infinito, especialmente quando o HTML é aberto via file:// no iPhone.
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        let response;
+        try {
+          response = await fetch(BIBLE_URL, {
+            signal: controller.signal,
+            cache: 'no-store'
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
+
+        if(!response.ok) throw new Error('HTTP '+response.status);
+        const data=await response.json();
+        const verses=normalizeGenesis(data);
+        if(!verses.length) throw new Error('Formato do JSON não reconhecido');
+
+        bibleFeed.innerHTML='';
+        verses.sort((a,b)=>a.chapter-b.chapter || a.verse-b.verse);
+        verses.forEach(v=>bibleFeed.appendChild(versePost(v)));
+
+        const end=document.createElement('div');
+        end.className='feed-end';
+        end.textContent=`${verses.length} versículos carregados de Gênesis • em ordem bíblica`;
+        bibleFeed.appendChild(end);
+      }catch(err){
+        console.error(err);
+
+        const isTimeout = err && err.name === 'AbortError';
+        const isLocalFile = location.protocol === 'file:';
+
+        let title = isTimeout
+          ? 'A Bíblia demorou demais para responder.'
+          : 'Não foi possível carregar Gênesis.';
+
+        let detail = isTimeout
+          ? 'A requisição foi cancelada automaticamente após 10 segundos para não deixar a tela carregando para sempre.'
+          : 'Não conseguimos acessar a fonte dos versículos neste momento.';
+
+        if(isLocalFile){
+          detail += ' Este HTML está aberto diretamente como arquivo (file://). Alguns navegadores, especialmente no iPhone, podem bloquear requisições externas nesse modo.';
+        }
+
+        bibleFeed.innerHTML=`
+          <div class="api-error">
+            <div style="font-size:34px;margin-bottom:12px">⚠</div>
+            <b>${title}</b>
+            <div style="max-width:430px;margin:8px auto 0;line-height:1.55">${detail}</div>
+            <div style="margin-top:8px;font-size:12px;opacity:.7">Fonte: Bíblia ARC • Gênesis</div>
+            <button onclick="loadGenesis()">Tentar novamente</button>
+          </div>`;
+      }
+    }
+
+    loadGenesis();
+</script>
+</body>
+</html>
