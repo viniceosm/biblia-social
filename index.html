@@ -116,9 +116,38 @@
     .bible-book{border-bottom:1px solid var(--line)}.book-header{width:100%;border:0;background:transparent;color:var(--text);padding:16px 2px;display:flex;align-items:center;text-align:left;gap:12px}
     .book-number{width:28px;color:var(--muted);font-size:12px;text-align:center}.book-info{flex:1}.book-name{font-family:Georgia,serif;font-size:18px;font-weight:700}.book-meta{color:var(--muted);font-size:12px;margin-top:3px}
     .book-chevron{color:var(--muted);transition:.2s}.bible-book.open .book-chevron{transform:rotate(180deg)}
-    .book-chapters{display:none;grid-template-columns:repeat(auto-fill,minmax(39px,1fr));gap:7px;padding:0 0 17px 40px}.bible-book.open .book-chapters{display:grid}
+    .book-chapters{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(39px,1fr));
+      gap:7px;
+      padding:0 0 0 40px;
+      max-height:0;
+      opacity:0;
+      overflow:hidden;
+      transform:translateY(-8px);
+      transition:max-height .38s ease,opacity .25s ease,transform .38s ease,padding .38s ease
+    }
+    .bible-book.open .book-chapters{
+      max-height:1200px;
+      opacity:1;
+      transform:translateY(0);
+      padding:0 0 17px 40px
+    }
     .chapter-btn{height:39px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:9px;font-size:13px;font-weight:700}.chapter-btn:hover{background:var(--panel2);color:var(--accent2)}
     .chapter-btn.chapter-read{background:#173d2a!important;border-color:#2f8f5b!important;color:#8ff0b9!important;box-shadow:inset 0 0 0 1px rgba(143,240,185,.08)}
+    .chapter-btn.selected-chapter{outline:2px solid var(--accent);outline-offset:1px}
+    .chapter-verses-panel{
+      max-height:0;opacity:0;overflow:hidden;transform:translateY(-10px);
+      transition:max-height .38s ease,opacity .28s ease,transform .38s ease;
+      margin-left:40px
+    }
+    .chapter-verses-panel.show{max-height:2400px;opacity:1;transform:translateY(0);padding-bottom:17px}
+    .chapter-panel-title{font-family:Georgia,serif;font-size:18px;font-weight:700;padding:6px 0 11px;color:var(--accent2)}
+    .mini-verse{display:flex;gap:11px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+    .mini-verse>span{width:27px;height:27px;border-radius:7px;background:var(--panel);display:grid;place-items:center;font-weight:800;color:var(--text)}
+    .mini-verse small{color:#8ff0b9;margin-left:5px}.mini-verse.mini-read>span{background:#173d2a;color:#8ff0b9}
+    .chapter-placeholder{padding:12px 0;color:var(--muted);font-size:13px}
+
 
     .book-card{background:linear-gradient(145deg,#171b20,#101318);border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:14px}
     .book-card h3{margin:0 0 6px}
@@ -483,7 +512,52 @@
       });
     }
     function toggleBook(btn){const el=btn.closest('.bible-book');const open=el.classList.contains('open');document.querySelectorAll('.bible-book.open').forEach(x=>x.classList.remove('open'));if(!open)el.classList.add('open')}
-    function openChapter(book,ch,e){e.stopPropagation();alert(book+' '+ch+' — aqui serão exibidos os versículos do capítulo.');}
+    function openChapter(book,ch,e){
+      e.stopPropagation();
+      const btn=e.currentTarget;
+      const bookEl=btn.closest('.bible-book');
+      let panel=bookEl.querySelector('.chapter-verses-panel');
+
+      // Clicar novamente no mesmo capítulo recolhe os versículos.
+      if(panel && panel.dataset.book===book && Number(panel.dataset.chapter)===ch && panel.classList.contains('show')){
+        panel.classList.remove('show');
+        btn.classList.remove('selected-chapter');
+        setTimeout(()=>{ if(!panel.classList.contains('show')) panel.remove(); },360);
+        return;
+      }
+
+      bookEl.querySelectorAll('.chapter-btn').forEach(x=>x.classList.remove('selected-chapter'));
+      btn.classList.add('selected-chapter');
+      if(panel) panel.remove();
+
+      panel=document.createElement('div');
+      panel.className='chapter-verses-panel';
+      panel.dataset.book=book;
+      panel.dataset.chapter=ch;
+
+      const counts=chapterVerseCounts[book];
+      const total=counts && counts[ch-1] ? counts[ch-1] : null;
+
+      if(book==='Gênesis' && total){
+        const read=getReadVerses();
+        panel.innerHTML=`<div class="chapter-panel-title">${book} ${ch}</div>`+
+          Array.from({length:total},(_,i)=>{
+            const verse=i+1, id=`arc-gn-${ch}-${verse}`;
+            const done=read.has(id);
+            return `<div class="mini-verse ${done?'mini-read':''}">
+              <span>${verse}</span>
+              <div>Versículo ${verse}${done?' <small>✓ Lida</small>':''}</div>
+            </div>`;
+          }).join('');
+      }else{
+        panel.innerHTML=`<div class="chapter-panel-title">${book} ${ch}</div>
+          <div class="chapter-placeholder">Os versículos deste capítulo serão carregados aqui.</div>`;
+      }
+
+      const chapters=bookEl.querySelector('.book-chapters');
+      chapters.insertAdjacentElement('afterend',panel);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>panel.classList.add('show')));
+    }
     renderBibleBooks();
     updateChapterReadStates();
 
