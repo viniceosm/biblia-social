@@ -320,6 +320,7 @@
       views.forEach(v => v.classList.toggle('active', v.id === id));
       tabs.forEach(t => t.classList.toggle('active', t.dataset.view === id));
       document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.view === id));
+      if(id === 'bible') requestAnimationFrame(() => updateChapterReadStates());
       window.scrollTo({top:0,behavior:'smooth'});
     }
 
@@ -510,6 +511,8 @@
         el.innerHTML=`<button class="book-header" onclick="toggleBook(this)"><span class="book-number">${i+1}</span><span class="book-info"><div class="book-name">${b[0]}</div><div class="book-meta">${b[1]} ${b[1]===1?'capítulo':'capítulos'}</div></span><span class="book-chevron">⌄</span></button><div class="book-chapters">${chapters}</div>`;
         (b[2]==='AT'?at:nt).appendChild(el);
       });
+      // Recalcula capítulos completos sempre que a lista é reconstruída.
+      requestAnimationFrame(() => updateChapterReadStates());
     }
     function toggleBook(btn){const el=btn.closest('.bible-book');const open=el.classList.contains('open');document.querySelectorAll('.bible-book.open').forEach(x=>x.classList.remove('open'));if(!open)el.classList.add('open')}
     function openChapter(book,ch,e){
@@ -559,7 +562,8 @@
       requestAnimationFrame(()=>requestAnimationFrame(()=>panel.classList.add('show')));
     }
     renderBibleBooks();
-    updateChapterReadStates();
+    // Os botões dos capítulos já existem neste ponto; restaura o verde ao abrir/recarregar.
+    requestAnimationFrame(() => updateChapterReadStates());
 
     // Para ~31 mil versículos, localStorage é suficiente e muito leve:
     // guardamos somente os IDs dos versículos marcados como lidos.
