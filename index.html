@@ -143,10 +143,18 @@
     }
     .chapter-verses-panel.show{max-height:2400px;opacity:1;transform:translateY(0);padding-bottom:17px}
     .chapter-panel-title{font-family:Georgia,serif;font-size:18px;font-weight:700;padding:6px 0 11px;color:var(--accent2)}
-    .mini-verse{display:flex;gap:11px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+    .mini-verse{width:100%;display:flex;gap:11px;align-items:center;padding:9px 0;border:0;border-top:1px solid var(--line);background:transparent;text-align:left;font-size:13px;color:var(--muted)}
     .mini-verse>span{width:27px;height:27px;border-radius:7px;background:var(--panel);display:grid;place-items:center;font-weight:800;color:var(--text)}
     .mini-verse small{color:#8ff0b9;margin-left:5px}.mini-verse.mini-read>span{background:#173d2a;color:#8ff0b9}
     .chapter-placeholder{padding:12px 0;color:var(--muted);font-size:13px}
+    .verse-modal-backdrop{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.64);display:flex;align-items:flex-end;justify-content:center;padding:18px;opacity:0;pointer-events:none;transition:opacity .22s ease}
+    .verse-modal-backdrop.show{opacity:1;pointer-events:auto}
+    .verse-modal{width:min(430px,100%);background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 25px 70px rgba(0,0,0,.5);transform:translateY(25px);transition:transform .25s ease}
+    .verse-modal-backdrop.show .verse-modal{transform:translateY(0)}
+    .verse-modal h3{margin:0 0 5px;font-family:Georgia,serif;font-size:23px}.verse-modal p{margin:0 0 18px;color:var(--muted);font-size:14px}
+    .verse-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.verse-modal-actions button{border:1px solid var(--line);border-radius:13px;padding:14px 10px;background:var(--panel2);color:var(--text);font-weight:800}
+    .verse-modal-actions button:hover{color:var(--accent2);border-color:#6d5730}.verse-modal-cancel{width:100%;margin-top:9px;border:0;background:transparent;color:var(--muted);padding:9px}
+
 
 
     .book-card{background:linear-gradient(145deg,#171b20,#101318);border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:14px}
@@ -547,10 +555,10 @@
           Array.from({length:total},(_,i)=>{
             const verse=i+1, id=`arc-gn-${ch}-${verse}`;
             const done=read.has(id);
-            return `<div class="mini-verse ${done?'mini-read':''}">
+            return `<button class="mini-verse ${done?'mini-read':''}" onclick="askOpenVerse('${book}',${ch},${verse},event)">
               <span>${verse}</span>
               <div>Versículo ${verse}${done?' <small>✓ Lida</small>':''}</div>
-            </div>`;
+            </button>`;
           }).join('');
       }else{
         panel.innerHTML=`<div class="chapter-panel-title">${book} ${ch}</div>
@@ -666,7 +674,59 @@
       });
     }
 
+
+    let selectedVerse = null;
+
+    function askOpenVerse(book, chapter, verse, event){
+      if(event) event.stopPropagation();
+      selectedVerse = {book, chapter, verse};
+      document.getElementById('verseModalTitle').textContent = `${book} ${chapter}:${verse}`;
+      requestAnimationFrame(()=>document.getElementById('verseOpenModal').classList.add('show'));
+    }
+
+    function closeVerseModal(event){
+      if(event && event.target !== document.getElementById('verseOpenModal')) return;
+      document.getElementById('verseOpenModal').classList.remove('show');
+    }
+
+    function openSelectedVerse(mode){
+      if(!selectedVerse) return;
+      const verse = selectedVerse;
+      closeVerseModal();
+
+      if(mode === 'feed'){
+        showView('feed');
+        if(verse.book === 'Gênesis'){
+          setTimeout(()=>{
+            const target=document.getElementById(`verse-arc-gn-${verse.chapter}-${verse.verse}`);
+            if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
+          },120);
+        }
+      }else{
+        showView('vertical');
+        // Mantém a referência selecionada disponível para a próxima evolução
+        // do modo vertical dinâmico.
+        const vertical = document.getElementById('vertical');
+        vertical.dataset.selectedBook = verse.book;
+        vertical.dataset.selectedChapter = verse.chapter;
+        vertical.dataset.selectedVerse = verse.verse;
+      }
+    }
+
     loadGenesis();
 </script>
+
+<div id="verseOpenModal" class="verse-modal-backdrop" onclick="closeVerseModal(event)">
+  <div class="verse-modal" onclick="event.stopPropagation()">
+    <h3 id="verseModalTitle">Gênesis 1:1</h3>
+    <p>Como você quer abrir este versículo?</p>
+    <div class="verse-modal-actions">
+      <button onclick="openSelectedVerse('feed')">▦ &nbsp; Feed</button>
+      <button onclick="openSelectedVerse('vertical')">▶ &nbsp; Vertical</button>
+    </div>
+    <button class="verse-modal-cancel" onclick="closeVerseModal()">Cancelar</button>
+  </div>
+</div>
+
 </body>
 </html>
