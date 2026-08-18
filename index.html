@@ -369,6 +369,8 @@
     function versePost(v){
       const article=document.createElement('article');
       article.className='post';
+      article.id=`verse-arc-gn-${v.chapter}-${v.verse}`;
+      article.dataset.verseId=`arc-gn-${v.chapter}-${v.verse}`;
       article.innerHTML=`
         <div class="post-head">
           <div class="avatar">Gn</div>
@@ -428,6 +430,7 @@
         verses.sort((a,b)=>a.chapter-b.chapter || a.verse-b.verse);
         verses.forEach(v=>bibleFeed.appendChild(versePost(v)));
         restoreReadStates(bibleFeed);
+        scrollToFirstUnread(verses);
 
         const end=document.createElement('div');
         end.className='feed-end';
@@ -557,6 +560,25 @@
         btn.classList.toggle('chapter-read', complete);
         btn.title = complete ? 'Capítulo lido' : '';
       });
+    }
+
+    function scrollToFirstUnread(verses){
+      const readVerses = getReadVerses();
+      const firstUnread = verses.find(v => !readVerses.has(`arc-gn-${v.chapter}-${v.verse}`));
+
+      if(!firstUnread) return;
+
+      const id = `verse-arc-gn-${firstUnread.chapter}-${firstUnread.verse}`;
+      const target = document.getElementById(id);
+
+      if(target){
+        // Aguarda o navegador terminar o layout dos posts antes de posicionar.
+        requestAnimationFrame(()=>{
+          requestAnimationFrame(()=>{
+            target.scrollIntoView({behavior:'auto', block:'start'});
+          });
+        });
+      }
     }
 
     function restoreReadStates(root=document){
