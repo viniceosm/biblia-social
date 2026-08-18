@@ -387,7 +387,7 @@
         <div class="actions">
           <button onclick="like(this)">♡</button>
           <button>◌</button>
-          <button class="read-btn" onclick="toggleRead(this)">○ Lida</button>
+          <button class="read-btn" data-verse-id="arc-gn-${v.chapter}-${v.verse}" onclick="toggleRead(this)">○ Lida</button>
           <button>↗</button>
         </div>`;
       return article;
@@ -425,6 +425,7 @@
         bibleFeed.innerHTML='';
         verses.sort((a,b)=>a.chapter-b.chapter || a.verse-b.verse);
         verses.forEach(v=>bibleFeed.appendChild(versePost(v)));
+        restoreReadStates(bibleFeed);
 
         const end=document.createElement('div');
         end.className='feed-end';
@@ -476,10 +477,51 @@
     function openChapter(book,ch,e){e.stopPropagation();alert(book+' '+ch+' — aqui serão exibidos os versículos do capítulo.');}
     renderBibleBooks();
 
-    function toggleRead(btn){
-      const isRead = btn.classList.toggle('read');
+    // Para ~31 mil versículos, localStorage é suficiente e muito leve:
+    // guardamos somente os IDs dos versículos marcados como lidos.
+    const READ_STORAGE_KEY = 'scriptura.readVerses.v1';
+
+    function getReadVerses(){
+      try{
+        return new Set(JSON.parse(localStorage.getItem(READ_STORAGE_KEY) || '[]'));
+      }catch(e){
+        return new Set();
+      }
+    }
+
+    function saveReadVerses(readSet){
+      try{
+        localStorage.setItem(READ_STORAGE_KEY, JSON.stringify([...readSet]));
+      }catch(e){
+        console.warn('Não foi possível salvar o progresso localmente.', e);
+      }
+    }
+
+    function applyReadState(btn, isRead){
+      btn.classList.toggle('read', isRead);
       btn.innerHTML = isRead ? '✓ Lida' : '○ Lida';
       btn.setAttribute('aria-pressed', isRead ? 'true' : 'false');
+    }
+
+    function toggleRead(btn){
+      const verseId = btn.dataset.verseId;
+      if(!verseId) return;
+
+      const readVerses = getReadVerses();
+      const willBeRead = !readVerses.has(verseId);
+
+      if(willBeRead) readVerses.add(verseId);
+      else readVerses.delete(verseId);
+
+      saveReadVerses(readVerses);
+      applyReadState(btn, willBeRead);
+    }
+
+    function restoreReadStates(root=document){
+      const readVerses = getReadVerses();
+      root.querySelectorAll('.read-btn[data-verse-id]').forEach(btn=>{
+        applyReadState(btn, readVerses.has(btn.dataset.verseId));
+      });
     }
 
     loadGenesis();
