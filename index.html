@@ -318,6 +318,18 @@
       if(id === 'feed' && loadedGenesisVerses.length){
         // Sempre retoma a leitura no primeiro versículo ainda não lido.
         requestAnimationFrame(() => scrollToFirstUnread(loadedGenesisVerses));
+      }else if(id === 'vertical' && loadedGenesisVerses.length){
+        // No modo vertical, também retoma no primeiro versículo ainda não lido.
+        const readVerses = getReadVerses();
+        const firstUnread = loadedGenesisVerses.find(v =>
+          !readVerses.has(`arc-gn-${v.chapter}-${v.verse}`)
+        );
+
+        if(firstUnread){
+          requestAnimationFrame(() =>
+            scrollVerticalToVerse(firstUnread.chapter, firstUnread.verse)
+          );
+        }
       }else{
         window.scrollTo({top:0,behavior:'smooth'});
       }
