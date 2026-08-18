@@ -107,7 +107,14 @@
     .reel-author{margin-top:20px;font-weight:750}
     .reel-actions{position:absolute;right:20px;bottom:34px;z-index:3;display:flex;flex-direction:column;gap:19px}
     .reel-actions button{width:44px;height:44px;border:1px solid rgba(255,255,255,.18);border-radius:50%;background:rgba(10,12,15,.55);color:white;font-size:18px}
-    .bible{padding:20px}
+    .bible{padding:20px 20px 115px}
+    .bible-heading h2{font-family:Georgia,serif;font-size:30px;margin:0 0 5px}.bible-heading p{margin:0;color:var(--muted);font-size:14px}
+    .testament-title{margin:26px 0 9px;color:var(--accent2);font-size:12px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
+    .bible-book{border-bottom:1px solid var(--line)}.book-header{width:100%;border:0;background:transparent;color:var(--text);padding:16px 2px;display:flex;align-items:center;text-align:left;gap:12px}
+    .book-number{width:28px;color:var(--muted);font-size:12px;text-align:center}.book-info{flex:1}.book-name{font-family:Georgia,serif;font-size:18px;font-weight:700}.book-meta{color:var(--muted);font-size:12px;margin-top:3px}
+    .book-chevron{color:var(--muted);transition:.2s}.bible-book.open .book-chevron{transform:rotate(180deg)}
+    .book-chapters{display:none;grid-template-columns:repeat(auto-fill,minmax(39px,1fr));gap:7px;padding:0 0 17px 40px}.bible-book.open .book-chapters{display:grid}
+    .chapter-btn{height:39px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:9px;font-size:13px;font-weight:700}.chapter-btn:hover{background:var(--panel2);color:var(--accent2)}
     .book-card{background:linear-gradient(145deg,#171b20,#101318);border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:14px}
     .book-card h3{margin:0 0 6px}
     .book-card p{color:var(--muted);margin:0 0 16px}
@@ -220,25 +227,9 @@
 
       <section id="bible" class="view">
         <div class="bible">
-          <div class="book-card">
-            <h3>📖 João</h3>
-            <p>Novo Testamento · 21 capítulos · @joao</p>
-            <div class="chapters" id="joaoChapters"></div>
-          </div>
-          <div class="book-card">
-            <h3>📖 Salmos</h3>
-            <p>Antigo Testamento · 150 capítulos · @salmos</p>
-            <div class="chapters">
-              <button>1</button><button>23</button><button>46</button><button>91</button><button>119</button><button>150</button>
-            </div>
-          </div>
-          <div class="book-card">
-            <h3>📖 Mateus</h3>
-            <p>Novo Testamento · 28 capítulos · @mateus</p>
-            <div class="chapters">
-              <button>1</button><button>5</button><button>6</button><button>7</button><button>24</button><button>28</button>
-            </div>
-          </div>
+          <div class="bible-heading"><h2>Bíblia</h2><p>66 livros • toque em um livro para ver seus capítulos</p></div>
+          <div class="testament-title">Antigo Testamento</div><div id="oldTestament"></div>
+          <div class="testament-title">Novo Testamento</div><div id="newTestament"></div>
         </div>
       </section>
     </main>
@@ -467,6 +458,20 @@
       }
     }
 
+
+    const bibleBooks=[["Gênesis", 50, "AT"], ["Êxodo", 40, "AT"], ["Levítico", 27, "AT"], ["Números", 36, "AT"], ["Deuteronômio", 34, "AT"], ["Josué", 24, "AT"], ["Juízes", 21, "AT"], ["Rute", 4, "AT"], ["1 Samuel", 31, "AT"], ["2 Samuel", 24, "AT"], ["1 Reis", 22, "AT"], ["2 Reis", 25, "AT"], ["1 Crônicas", 29, "AT"], ["2 Crônicas", 36, "AT"], ["Esdras", 10, "AT"], ["Neemias", 13, "AT"], ["Ester", 10, "AT"], ["Jó", 42, "AT"], ["Salmos", 150, "AT"], ["Provérbios", 31, "AT"], ["Eclesiastes", 12, "AT"], ["Cantares", 8, "AT"], ["Isaías", 66, "AT"], ["Jeremias", 52, "AT"], ["Lamentações", 5, "AT"], ["Ezequiel", 48, "AT"], ["Daniel", 12, "AT"], ["Oseias", 14, "AT"], ["Joel", 3, "AT"], ["Amós", 9, "AT"], ["Obadias", 1, "AT"], ["Jonas", 4, "AT"], ["Miqueias", 7, "AT"], ["Naum", 3, "AT"], ["Habacuque", 3, "AT"], ["Sofonias", 3, "AT"], ["Ageu", 2, "AT"], ["Zacarias", 14, "AT"], ["Malaquias", 4, "AT"], ["Mateus", 28, "NT"], ["Marcos", 16, "NT"], ["Lucas", 24, "NT"], ["João", 21, "NT"], ["Atos", 28, "NT"], ["Romanos", 16, "NT"], ["1 Coríntios", 16, "NT"], ["2 Coríntios", 13, "NT"], ["Gálatas", 6, "NT"], ["Efésios", 6, "NT"], ["Filipenses", 4, "NT"], ["Colossenses", 4, "NT"], ["1 Tessalonicenses", 5, "NT"], ["2 Tessalonicenses", 3, "NT"], ["1 Timóteo", 6, "NT"], ["2 Timóteo", 4, "NT"], ["Tito", 3, "NT"], ["Filemom", 1, "NT"], ["Hebreus", 13, "NT"], ["Tiago", 5, "NT"], ["1 Pedro", 5, "NT"], ["2 Pedro", 3, "NT"], ["1 João", 5, "NT"], ["2 João", 1, "NT"], ["3 João", 1, "NT"], ["Judas", 1, "NT"], ["Apocalipse", 22, "NT"]];
+    function renderBibleBooks(){
+      const at=document.getElementById('oldTestament'),nt=document.getElementById('newTestament'); at.innerHTML='';nt.innerHTML='';
+      bibleBooks.forEach((b,i)=>{
+        const el=document.createElement('div');el.className='bible-book';
+        const chapters=Array.from({length:b[1]},(_,c)=>`<button class="chapter-btn" onclick="openChapter('${b[0]}',${c+1},event)">${c+1}</button>`).join('');
+        el.innerHTML=`<button class="book-header" onclick="toggleBook(this)"><span class="book-number">${i+1}</span><span class="book-info"><div class="book-name">${b[0]}</div><div class="book-meta">${b[1]} ${b[1]===1?'capítulo':'capítulos'}</div></span><span class="book-chevron">⌄</span></button><div class="book-chapters">${chapters}</div>`;
+        (b[2]==='AT'?at:nt).appendChild(el);
+      });
+    }
+    function toggleBook(btn){const el=btn.closest('.bible-book');const open=el.classList.contains('open');document.querySelectorAll('.bible-book.open').forEach(x=>x.classList.remove('open'));if(!open)el.classList.add('open')}
+    function openChapter(book,ch,e){e.stopPropagation();alert(book+' '+ch+' — aqui serão exibidos os versículos do capítulo.');}
+    renderBibleBooks();
     loadGenesis();
 </script>
 </body>
