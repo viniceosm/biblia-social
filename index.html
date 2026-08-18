@@ -324,9 +324,7 @@
       btn.textContent = btn.textContent === 'Seguir' ? 'Seguindo' : 'Seguir';
     }));
 
-    const jc = document.getElementById('joaoChapters');
-    for(let i=1;i<=21;i++) jc.innerHTML += `<button>${i}</button>`;
-  
+
     // Feed bíblico dinâmico. A fonte é um repositório JSON público no GitHub.
     // Começamos em Gênesis e mantemos a ordem recebida: capítulo 1, verso 1, 2, 3...
     const BIBLE_URL = 'https://raw.githubusercontent.com/MaatheusGois/bible/main/versions/pt-br/arc/gn/gn.json';
@@ -461,7 +459,9 @@
 
     const bibleBooks=[["Gênesis", 50, "AT"], ["Êxodo", 40, "AT"], ["Levítico", 27, "AT"], ["Números", 36, "AT"], ["Deuteronômio", 34, "AT"], ["Josué", 24, "AT"], ["Juízes", 21, "AT"], ["Rute", 4, "AT"], ["1 Samuel", 31, "AT"], ["2 Samuel", 24, "AT"], ["1 Reis", 22, "AT"], ["2 Reis", 25, "AT"], ["1 Crônicas", 29, "AT"], ["2 Crônicas", 36, "AT"], ["Esdras", 10, "AT"], ["Neemias", 13, "AT"], ["Ester", 10, "AT"], ["Jó", 42, "AT"], ["Salmos", 150, "AT"], ["Provérbios", 31, "AT"], ["Eclesiastes", 12, "AT"], ["Cantares", 8, "AT"], ["Isaías", 66, "AT"], ["Jeremias", 52, "AT"], ["Lamentações", 5, "AT"], ["Ezequiel", 48, "AT"], ["Daniel", 12, "AT"], ["Oseias", 14, "AT"], ["Joel", 3, "AT"], ["Amós", 9, "AT"], ["Obadias", 1, "AT"], ["Jonas", 4, "AT"], ["Miqueias", 7, "AT"], ["Naum", 3, "AT"], ["Habacuque", 3, "AT"], ["Sofonias", 3, "AT"], ["Ageu", 2, "AT"], ["Zacarias", 14, "AT"], ["Malaquias", 4, "AT"], ["Mateus", 28, "NT"], ["Marcos", 16, "NT"], ["Lucas", 24, "NT"], ["João", 21, "NT"], ["Atos", 28, "NT"], ["Romanos", 16, "NT"], ["1 Coríntios", 16, "NT"], ["2 Coríntios", 13, "NT"], ["Gálatas", 6, "NT"], ["Efésios", 6, "NT"], ["Filipenses", 4, "NT"], ["Colossenses", 4, "NT"], ["1 Tessalonicenses", 5, "NT"], ["2 Tessalonicenses", 3, "NT"], ["1 Timóteo", 6, "NT"], ["2 Timóteo", 4, "NT"], ["Tito", 3, "NT"], ["Filemom", 1, "NT"], ["Hebreus", 13, "NT"], ["Tiago", 5, "NT"], ["1 Pedro", 5, "NT"], ["2 Pedro", 3, "NT"], ["1 João", 5, "NT"], ["2 João", 1, "NT"], ["3 João", 1, "NT"], ["Judas", 1, "NT"], ["Apocalipse", 22, "NT"]];
     function renderBibleBooks(){
-      const at=document.getElementById('oldTestament'),nt=document.getElementById('newTestament'); at.innerHTML='';nt.innerHTML='';
+      const at=document.getElementById('oldTestament'),nt=document.getElementById('newTestament');
+      if(!at || !nt) return;
+      at.innerHTML=''; nt.innerHTML='';
       bibleBooks.forEach((b,i)=>{
         const el=document.createElement('div');el.className='bible-book';
         const chapters=Array.from({length:b[1]},(_,c)=>`<button class="chapter-btn" onclick="openChapter('${b[0]}',${c+1},event)">${c+1}</button>`).join('');
