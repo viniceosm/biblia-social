@@ -110,6 +110,10 @@
     .reel-author{margin-top:20px;font-weight:750}
     .reel-actions{position:absolute;right:20px;bottom:34px;z-index:3;display:flex;flex-direction:column;gap:19px}
     .reel-actions button{width:44px;height:44px;border:1px solid rgba(255,255,255,.18);border-radius:50%;background:rgba(10,12,15,.55);color:white;font-size:18px}
+    .reel-progress{margin-top:14px;font-size:12px;color:#c8c8c8}
+    .reel-actions .vertical-read.read{color:#8ff0b9;border-color:#5cb77f}
+    .reel-user{margin-top:18px;font-weight:800}.reel-user span{color:var(--accent2);font-size:12px;margin-left:4px}
+
     .bible{padding:20px 20px 115px}
     .bible-heading h2{font-family:Georgia,serif;font-size:30px;margin:0 0 5px}.bible-heading p{margin:0;color:var(--muted);font-size:14px}
     .testament-title{margin:26px 0 9px;color:var(--accent2);font-size:12px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
@@ -243,27 +247,8 @@
       </section>
 
       <section id="vertical" class="view">
-        <div class="vertical-wrap">
-          <article class="reel">
-            <div class="reel-content">
-              <div class="reel-ref">JOÃO 3:16</div>
-              <p class="verse">Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito...</p>
-              <div class="reel-author">@joao <span class="verified">◆ Escritura</span></div>
-            </div>
-            <div class="reel-actions">
-              <button onclick="like(this)">♡</button><button>♧</button><button>◌</button><button>↗</button>
-            </div>
-          </article>
-          <article class="reel">
-            <div class="reel-content">
-              <div class="reel-ref">SALMOS 46:1</div>
-              <p class="verse">Deus é o nosso refúgio e fortaleza, socorro bem presente na angústia.</p>
-              <div class="reel-author">@salmos <span class="verified">◆ Escritura</span></div>
-            </div>
-            <div class="reel-actions">
-              <button onclick="like(this)">♡</button><button>♧</button><button>◌</button><button>↗</button>
-            </div>
-          </article>
+        <div id="verticalFeed" class="vertical-wrap">
+          <div class="feed-status"><div class="feed-spinner"></div><strong>Carregando Gênesis...</strong></div>
         </div>
       </section>
 
@@ -468,6 +453,7 @@
         verses.sort((a,b)=>a.chapter-b.chapter || a.verse-b.verse);
         verses.forEach(v=>bibleFeed.appendChild(versePost(v)));
         restoreReadStates(bibleFeed);
+        renderVerticalGenesis(verses);
         scrollToFirstUnread(verses);
 
         const end=document.createElement('div');
@@ -725,7 +711,62 @@
         vertical.dataset.selectedBook = verse.book;
         vertical.dataset.selectedChapter = verse.chapter;
         vertical.dataset.selectedVerse = verse.verse;
+        if(verse.book === 'Gênesis'){
+          setTimeout(()=>scrollVerticalToVerse(verse.chapter,verse.verse),120);
+        }
       }
+    }
+
+
+    let loadedGenesisVerses = [];
+
+    function renderVerticalGenesis(verses){
+      loadedGenesisVerses = verses;
+      const box=document.getElementById('verticalFeed');
+      if(!box) return;
+      const read=getReadVerses();
+      box.innerHTML='';
+
+      verses.forEach(v=>{
+        const id=`arc-gn-${v.chapter}-${v.verse}`;
+        const done=read.has(id);
+        const reel=document.createElement('article');
+        reel.className='reel';
+        reel.id=`vertical-arc-gn-${v.chapter}-${v.verse}`;
+        reel.innerHTML=`
+          <div class="reel-content">
+            <div class="reel-ref">GÊNESIS ${v.chapter}:${v.verse}</div>
+            <p class="verse">“${escapeHtml(v.text)}”</p>
+            <div class="reel-user">@genesis <span>◆ Escritura</span></div>
+            <div class="reel-progress">Almeida Revista e Corrigida</div>
+          </div>
+          <div class="reel-actions">
+            <button onclick="like(this)">♡</button>
+            <button class="vertical-read ${done?'read':''}" data-verse-id="${id}" onclick="toggleVerticalRead(this)">${done?'✓':'○'}</button>
+            <button>↗</button>
+          </div>`;
+        box.appendChild(reel);
+      });
+    }
+
+    function toggleVerticalRead(btn){
+      const id=btn.dataset.verseId;
+      const set=getReadVerses();
+      const done=!set.has(id);
+      if(done) set.add(id); else set.delete(id);
+      saveReadVerses(set);
+      btn.classList.toggle('read',done);
+      btn.textContent=done?'✓':'○';
+
+      // Sincroniza imediatamente com o mesmo versículo no Feed.
+      const feedBtn=document.querySelector(`.read-btn[data-verse-id="${id}"]`);
+      if(feedBtn) applyReadState(feedBtn,done);
+      updateChapterReadStates();
+    }
+
+    function scrollVerticalToVerse(chapter,verse){
+      const target=document.getElementById(`vertical-arc-gn-${chapter}-${verse}`);
+      if(target) requestAnimationFrame(()=>target.scrollIntoView({behavior:'auto',block:'start'}));
     }
 
     loadGenesis();
