@@ -314,7 +314,13 @@
       tabs.forEach(t => t.classList.toggle('active', t.dataset.view === id));
       document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.view === id));
       if(id === 'bible') requestAnimationFrame(() => updateChapterReadStates());
-      window.scrollTo({top:0,behavior:'smooth'});
+
+      if(id === 'feed' && loadedGenesisVerses.length){
+        // Sempre retoma a leitura no primeiro versículo ainda não lido.
+        requestAnimationFrame(() => scrollToFirstUnread(loadedGenesisVerses));
+      }else{
+        window.scrollTo({top:0,behavior:'smooth'});
+      }
     }
 
     function focusSearch(){
