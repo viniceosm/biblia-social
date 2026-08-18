@@ -522,7 +522,22 @@
       // Recalcula capítulos completos sempre que a lista é reconstruída.
       requestAnimationFrame(() => updateChapterReadStates());
     }
-    function toggleBook(btn){const el=btn.closest('.bible-book');const open=el.classList.contains('open');document.querySelectorAll('.bible-book.open').forEach(x=>x.classList.remove('open'));if(!open)el.classList.add('open')}
+    function toggleBook(btn){
+      const el=btn.closest('.bible-book');
+      const open=el.classList.contains('open');
+
+      // Ao recolher/trocar de livro, fecha também qualquer painel de versículos aberto.
+      document.querySelectorAll('.bible-book').forEach(book=>{
+        book.classList.remove('open');
+        book.querySelectorAll('.chapter-btn.selected-chapter').forEach(ch=>ch.classList.remove('selected-chapter'));
+        book.querySelectorAll('.chapter-verses-panel').forEach(panel=>{
+          panel.classList.remove('show');
+          setTimeout(()=>panel.remove(),360);
+        });
+      });
+
+      if(!open) el.classList.add('open');
+    }
     function openChapter(book,ch,e){
       e.stopPropagation();
       const btn=e.currentTarget;
