@@ -92,6 +92,9 @@
     .actions{display:flex;justify-content:space-between;margin-top:16px;color:var(--muted);max-width:420px}
     .actions button{background:none;border:0;color:inherit;padding:5px 0}
     .actions button:hover{color:var(--accent2)}
+    .read-btn{min-width:64px}
+    .read-btn.read{color:var(--accent2)!important;font-weight:800}
+
     .liked{color:var(--danger)!important}
     .vertical-wrap{height:calc(100vh - 122px);overflow-y:auto;scroll-snap-type:y mandatory}
     .reel{height:calc(100vh - 122px);scroll-snap-align:start;position:relative;display:flex;align-items:flex-end;padding:30px;overflow:hidden;border-bottom:1px solid var(--line)}
@@ -384,7 +387,7 @@
         <div class="actions">
           <button onclick="like(this)">♡</button>
           <button>◌</button>
-          <button>♧ Salvar</button>
+          <button class="read-btn" onclick="toggleRead(this)">○ Lida</button>
           <button>↗</button>
         </div>`;
       return article;
@@ -472,6 +475,13 @@
     function toggleBook(btn){const el=btn.closest('.bible-book');const open=el.classList.contains('open');document.querySelectorAll('.bible-book.open').forEach(x=>x.classList.remove('open'));if(!open)el.classList.add('open')}
     function openChapter(book,ch,e){e.stopPropagation();alert(book+' '+ch+' — aqui serão exibidos os versículos do capítulo.');}
     renderBibleBooks();
+
+    function toggleRead(btn){
+      const isRead = btn.classList.toggle('read');
+      btn.innerHTML = isRead ? '✓ Lida' : '○ Lida';
+      btn.setAttribute('aria-pressed', isRead ? 'true' : 'false');
+    }
+
     loadGenesis();
 </script>
 </body>
