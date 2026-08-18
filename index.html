@@ -118,6 +118,8 @@
     .book-chevron{color:var(--muted);transition:.2s}.bible-book.open .book-chevron{transform:rotate(180deg)}
     .book-chapters{display:none;grid-template-columns:repeat(auto-fill,minmax(39px,1fr));gap:7px;padding:0 0 17px 40px}.bible-book.open .book-chapters{display:grid}
     .chapter-btn{height:39px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:9px;font-size:13px;font-weight:700}.chapter-btn:hover{background:var(--panel2);color:var(--accent2)}
+    .chapter-btn.chapter-read{background:#173d2a!important;border-color:#2f8f5b!important;color:#8ff0b9!important;box-shadow:inset 0 0 0 1px rgba(143,240,185,.08)}
+
     .book-card{background:linear-gradient(145deg,#171b20,#101318);border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:14px}
     .book-card h3{margin:0 0 6px}
     .book-card p{color:var(--muted);margin:0 0 16px}
@@ -461,6 +463,10 @@
     }
 
 
+    const chapterVerseCounts = {
+      'Gênesis': [31, 25, 24, 26, 32, 22, 24, 22, 29, 32, 32, 20, 18, 24, 21, 16, 27, 33, 38, 18, 34, 24, 20, 67, 34, 35, 46, 22, 35, 43, 55, 32, 20, 31, 29, 43, 36, 30, 23, 23, 57, 38, 34, 34, 28, 34, 31, 22, 33, 26]
+    };
+
     const bibleBooks=[["Gênesis", 50, "AT"], ["Êxodo", 40, "AT"], ["Levítico", 27, "AT"], ["Números", 36, "AT"], ["Deuteronômio", 34, "AT"], ["Josué", 24, "AT"], ["Juízes", 21, "AT"], ["Rute", 4, "AT"], ["1 Samuel", 31, "AT"], ["2 Samuel", 24, "AT"], ["1 Reis", 22, "AT"], ["2 Reis", 25, "AT"], ["1 Crônicas", 29, "AT"], ["2 Crônicas", 36, "AT"], ["Esdras", 10, "AT"], ["Neemias", 13, "AT"], ["Ester", 10, "AT"], ["Jó", 42, "AT"], ["Salmos", 150, "AT"], ["Provérbios", 31, "AT"], ["Eclesiastes", 12, "AT"], ["Cantares", 8, "AT"], ["Isaías", 66, "AT"], ["Jeremias", 52, "AT"], ["Lamentações", 5, "AT"], ["Ezequiel", 48, "AT"], ["Daniel", 12, "AT"], ["Oseias", 14, "AT"], ["Joel", 3, "AT"], ["Amós", 9, "AT"], ["Obadias", 1, "AT"], ["Jonas", 4, "AT"], ["Miqueias", 7, "AT"], ["Naum", 3, "AT"], ["Habacuque", 3, "AT"], ["Sofonias", 3, "AT"], ["Ageu", 2, "AT"], ["Zacarias", 14, "AT"], ["Malaquias", 4, "AT"], ["Mateus", 28, "NT"], ["Marcos", 16, "NT"], ["Lucas", 24, "NT"], ["João", 21, "NT"], ["Atos", 28, "NT"], ["Romanos", 16, "NT"], ["1 Coríntios", 16, "NT"], ["2 Coríntios", 13, "NT"], ["Gálatas", 6, "NT"], ["Efésios", 6, "NT"], ["Filipenses", 4, "NT"], ["Colossenses", 4, "NT"], ["1 Tessalonicenses", 5, "NT"], ["2 Tessalonicenses", 3, "NT"], ["1 Timóteo", 6, "NT"], ["2 Timóteo", 4, "NT"], ["Tito", 3, "NT"], ["Filemom", 1, "NT"], ["Hebreus", 13, "NT"], ["Tiago", 5, "NT"], ["1 Pedro", 5, "NT"], ["2 Pedro", 3, "NT"], ["1 João", 5, "NT"], ["2 João", 1, "NT"], ["3 João", 1, "NT"], ["Judas", 1, "NT"], ["Apocalipse", 22, "NT"]];
     function renderBibleBooks(){
       const at=document.getElementById('oldTestament'),nt=document.getElementById('newTestament');
@@ -468,7 +474,7 @@
       at.innerHTML=''; nt.innerHTML='';
       bibleBooks.forEach((b,i)=>{
         const el=document.createElement('div');el.className='bible-book';
-        const chapters=Array.from({length:b[1]},(_,c)=>`<button class="chapter-btn" onclick="openChapter('${b[0]}',${c+1},event)">${c+1}</button>`).join('');
+        const chapters=Array.from({length:b[1]},(_,c)=>`<button class="chapter-btn" data-book="${b[0]}" data-chapter="${c+1}" onclick="openChapter('${b[0]}',${c+1},event)">${c+1}</button>`).join('');
         el.innerHTML=`<button class="book-header" onclick="toggleBook(this)"><span class="book-number">${i+1}</span><span class="book-info"><div class="book-name">${b[0]}</div><div class="book-meta">${b[1]} ${b[1]===1?'capítulo':'capítulos'}</div></span><span class="book-chevron">⌄</span></button><div class="book-chapters">${chapters}</div>`;
         (b[2]==='AT'?at:nt).appendChild(el);
       });
@@ -476,6 +482,7 @@
     function toggleBook(btn){const el=btn.closest('.bible-book');const open=el.classList.contains('open');document.querySelectorAll('.bible-book.open').forEach(x=>x.classList.remove('open'));if(!open)el.classList.add('open')}
     function openChapter(book,ch,e){e.stopPropagation();alert(book+' '+ch+' — aqui serão exibidos os versículos do capítulo.');}
     renderBibleBooks();
+    updateChapterReadStates();
 
     // Para ~31 mil versículos, localStorage é suficiente e muito leve:
     // guardamos somente os IDs dos versículos marcados como lidos.
@@ -515,6 +522,41 @@
 
       saveReadVerses(readVerses);
       applyReadState(btn, willBeRead);
+      updateChapterReadStates();
+    }
+
+    function updateChapterReadStates(){
+      const readVerses = getReadVerses();
+
+      document.querySelectorAll('.chapter-btn[data-book][data-chapter]').forEach(btn=>{
+        const book = btn.dataset.book;
+        const chapter = Number(btn.dataset.chapter);
+        const counts = chapterVerseCounts[book];
+
+        // Só colore quando conhecemos a quantidade real de versículos do capítulo.
+        if(!counts || !counts[chapter-1]){
+          btn.classList.remove('chapter-read');
+          return;
+        }
+
+        const total = counts[chapter-1];
+        let complete = true;
+
+        // Atualmente o feed usa ARC + Gênesis (gn).
+        if(book === 'Gênesis'){
+          for(let verse=1; verse<=total; verse++){
+            if(!readVerses.has(`arc-gn-${chapter}-${verse}`)){
+              complete = false;
+              break;
+            }
+          }
+        }else{
+          complete = false;
+        }
+
+        btn.classList.toggle('chapter-read', complete);
+        btn.title = complete ? 'Capítulo lido' : '';
+      });
     }
 
     function restoreReadStates(root=document){
