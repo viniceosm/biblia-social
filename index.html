@@ -147,6 +147,9 @@
     }
     .chapter-verses-panel.show{max-height:2400px;opacity:1;transform:translateY(0);padding-bottom:17px}
     .chapter-panel-title{font-family:Georgia,serif;font-size:18px;font-weight:700;padding:6px 0 11px;color:var(--accent2)}
+    .chapter-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .mark-chapter-btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:999px;padding:8px 10px;font-size:11px;font-weight:800}
+    .mark-chapter-btn.done{background:#173d2a;border-color:#2f8f5b;color:#8ff0b9}
     .mini-verse{width:100%;display:flex;gap:11px;align-items:center;padding:9px 0;border:0;border-top:1px solid var(--line);background:transparent;text-align:left;font-size:13px;color:var(--muted)}
     .mini-verse>span{width:27px;height:27px;border-radius:7px;background:var(--panel);display:grid;place-items:center;font-weight:800;color:var(--text)}
     .mini-verse small{color:#8ff0b9;margin-left:5px}.mini-verse.mini-read>span{background:#173d2a;color:#8ff0b9}
@@ -542,6 +545,26 @@
 
       if(!open) el.classList.add('open');
     }
+    function toggleWholeChapter(book,ch,e){
+      e.stopPropagation();
+      const total=chapterVerseCounts[book]?.[ch-1];
+      if(!total || book!=='Gênesis') return;
+      const read=getReadVerses();
+      const ids=Array.from({length:total},(_,i)=>`arc-gn-${ch}-${i+1}`);
+      const allRead=ids.every(id=>read.has(id));
+      ids.forEach(id=>allRead?read.delete(id):read.add(id));
+      saveReadVerses(read);
+      restoreReadStates(document);
+      updateChapterReadStates();
+      document.querySelectorAll('.vertical-read[data-verse-id]').forEach(btn=>{
+        const done=read.has(btn.dataset.verseId);btn.classList.toggle('read',done);btn.textContent=done?'✓':'○';
+      });
+      const btn=document.querySelector(`.chapter-btn[data-book="${book}"][data-chapter="${ch}"]`);
+      const panel=btn?.closest('.bible-book')?.querySelector('.chapter-verses-panel');
+      if(panel) panel.remove();
+      if(btn) openChapter(book,ch,{stopPropagation(){},currentTarget:btn});
+    }
+
     function openChapter(book,ch,e){
       e.stopPropagation();
       const btn=e.currentTarget;
@@ -570,7 +593,10 @@
 
       if(book==='Gênesis' && total){
         const read=getReadVerses();
-        panel.innerHTML=`<div class="chapter-panel-title">${book} ${ch}</div>`+
+        const chapterComplete=Array.from({length:total},(_,i)=>read.has(`arc-gn-${ch}-${i+1}`)).every(Boolean);
+        panel.innerHTML=`<div class="chapter-panel-head"><div class="chapter-panel-title">${book} ${ch}</div>
+          <button class="mark-chapter-btn ${chapterComplete?'done':''}" onclick="toggleWholeChapter('${book}',${ch},event)">
+          ${chapterComplete?'✓ Capítulo lido':'✓ Marcar capítulo como lido'}</button></div>`+
           Array.from({length:total},(_,i)=>{
             const verse=i+1, id=`arc-gn-${ch}-${verse}`;
             const done=read.has(id);
