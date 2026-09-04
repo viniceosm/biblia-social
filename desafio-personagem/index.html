@@ -578,6 +578,7 @@
         <h3>Época</h3>
         <p>Os personagens são organizados em eras bíblicas, evitando depender de datas históricas exatas.</p>
         <ul>
+          <li>Primórdios</li>
           <li>Patriarcas</li>
           <li>Êxodo</li>
           <li>Conquista</li>
@@ -655,78 +656,153 @@
     // Base temporária para desenvolver o autocomplete.
     // Depois esta lista virá da base pública de personagens do Supabase.
     const characters = [
-      {
-        id: 1, name: 'Davi', sex: 'Homem', testament: 'Antigo',
-        people: 'Judá', occupations: ['Pastor', 'Guerreiro', 'Rei', 'Músico'],
-        era: 5, eraName: 'Reino Unido', firstBook: 9, firstBookName: '1 Samuel',
-        family: [2, 3, 4]
-      },
-      {
-        id: 2, name: 'Salomão', sex: 'Homem', testament: 'Antigo',
-        people: 'Judá', occupations: ['Rei'],
-        era: 5, eraName: 'Reino Unido', firstBook: 10, firstBookName: '2 Samuel',
-        family: [1]
-      },
-      {
-        id: 3, name: 'Absalão', sex: 'Homem', testament: 'Antigo',
-        people: 'Judá', occupations: ['Príncipe'],
-        era: 5, eraName: 'Reino Unido', firstBook: 10, firstBookName: '2 Samuel',
-        family: [1]
-      },
-      {
-        id: 4, name: 'Jessé', sex: 'Homem', testament: 'Antigo',
-        people: 'Judá', occupations: [],
-        era: 5, eraName: 'Reino Unido', firstBook: 8, firstBookName: 'Rute',
-        family: [1]
-      },
-      {
-        id: 5, name: 'Saul', sex: 'Homem', testament: 'Antigo',
-        people: 'Benjamim', occupations: ['Rei', 'Guerreiro'],
-        era: 5, eraName: 'Reino Unido', firstBook: 9, firstBookName: '1 Samuel',
-        family: []
-      },
-      {
-        id: 6, name: 'Samuel', sex: 'Homem', testament: 'Antigo',
-        people: 'Levi', occupations: ['Profeta', 'Juiz'],
-        era: 4, eraName: 'Juízes', firstBook: 9, firstBookName: '1 Samuel',
-        family: [7]
-      },
-      {
-        id: 7, name: 'Ana', sex: 'Mulher', testament: 'Antigo',
-        people: 'Israelita', occupations: [],
-        era: 4, eraName: 'Juízes', firstBook: 9, firstBookName: '1 Samuel',
-        family: [6]
-      },
-      {
-        id: 8, name: 'Moisés', sex: 'Homem', testament: 'Antigo',
-        people: 'Levi', occupations: ['Pastor', 'Líder', 'Profeta'],
-        era: 2, eraName: 'Êxodo', firstBook: 2, firstBookName: 'Êxodo',
-        family: [9]
-      },
-      {
-        id: 9, name: 'Arão', sex: 'Homem', testament: 'Antigo',
-        people: 'Levi', occupations: ['Sacerdote'],
-        era: 2, eraName: 'Êxodo', firstBook: 2, firstBookName: 'Êxodo',
-        family: [8]
-      },
-      {
-        id: 10, name: 'Ester', sex: 'Mulher', testament: 'Antigo',
-        people: 'Benjamim', occupations: ['Rainha'],
-        era: 8, eraName: 'Pós-exílio', firstBook: 17, firstBookName: 'Ester',
-        family: []
-      },
-      {
-        id: 11, name: 'Pedro', sex: 'Homem', testament: 'Novo',
-        people: 'Judeu', occupations: ['Pescador', 'Apóstolo'],
-        era: 9, eraName: 'Período de Jesus', firstBook: 40, firstBookName: 'Mateus',
-        family: []
-      },
-      {
-        id: 12, name: 'Paulo', sex: 'Homem', testament: 'Novo',
-        people: 'Benjamim', occupations: ['Apóstolo'],
-        era: 10, eraName: 'Igreja Apostólica', firstBook: 44, firstBookName: 'Atos',
-        family: []
-      }
+      { id: 1, name: 'Davi', sex: 'Homem', testament: 'Antigo', people: 'Judá',
+        occupations: ['Pastor', 'Guerreiro', 'Rei', 'Músico'], era: 5, eraName: 'Reino Unido',
+        firstBook: 9, firstBookName: '1 Samuel', family: [2, 3, 4] },
+
+      { id: 2, name: 'Salomão', sex: 'Homem', testament: 'Antigo', people: 'Judá',
+        occupations: ['Rei'], era: 5, eraName: 'Reino Unido',
+        firstBook: 10, firstBookName: '2 Samuel', family: [1] },
+
+      { id: 3, name: 'Absalão', sex: 'Homem', testament: 'Antigo', people: 'Judá',
+        occupations: ['Príncipe'], era: 5, eraName: 'Reino Unido',
+        firstBook: 10, firstBookName: '2 Samuel', family: [1] },
+
+      { id: 4, name: 'Jessé', sex: 'Homem', testament: 'Antigo', people: 'Judá',
+        occupations: [], era: 5, eraName: 'Reino Unido',
+        firstBook: 8, firstBookName: 'Rute', family: [1] },
+
+      { id: 5, name: 'Saul', sex: 'Homem', testament: 'Antigo', people: 'Benjamim',
+        occupations: ['Rei', 'Guerreiro'], era: 5, eraName: 'Reino Unido',
+        firstBook: 9, firstBookName: '1 Samuel', family: [] },
+
+      { id: 6, name: 'Samuel', sex: 'Homem', testament: 'Antigo', people: 'Levi',
+        occupations: ['Profeta', 'Juiz'], era: 4, eraName: 'Juízes',
+        firstBook: 9, firstBookName: '1 Samuel', family: [7] },
+
+      { id: 7, name: 'Ana', sex: 'Mulher', testament: 'Antigo', people: 'Israelita',
+        occupations: [], era: 4, eraName: 'Juízes',
+        firstBook: 9, firstBookName: '1 Samuel', family: [6] },
+
+      { id: 8, name: 'Moisés', sex: 'Homem', testament: 'Antigo', people: 'Levi',
+        occupations: ['Pastor', 'Líder', 'Profeta'], era: 2, eraName: 'Êxodo',
+        firstBook: 2, firstBookName: 'Êxodo', family: [9, 10] },
+
+      { id: 9, name: 'Arão', sex: 'Homem', testament: 'Antigo', people: 'Levi',
+        occupations: ['Sacerdote'], era: 2, eraName: 'Êxodo',
+        firstBook: 2, firstBookName: 'Êxodo', family: [8, 10] },
+
+      { id: 10, name: 'Miriã', sex: 'Mulher', testament: 'Antigo', people: 'Levi',
+        occupations: ['Profetisa'], era: 2, eraName: 'Êxodo',
+        firstBook: 2, firstBookName: 'Êxodo', family: [8, 9] },
+
+      { id: 11, name: 'Josué', sex: 'Homem', testament: 'Antigo', people: 'Efraim',
+        occupations: ['Líder', 'Guerreiro'], era: 3, eraName: 'Conquista',
+        firstBook: 2, firstBookName: 'Êxodo', family: [] },
+
+      { id: 12, name: 'Gideão', sex: 'Homem', testament: 'Antigo', people: 'Manassés',
+        occupations: ['Juiz', 'Guerreiro'], era: 4, eraName: 'Juízes',
+        firstBook: 7, firstBookName: 'Juízes', family: [] },
+
+      { id: 13, name: 'Sansão', sex: 'Homem', testament: 'Antigo', people: 'Dã',
+        occupations: ['Juiz'], era: 4, eraName: 'Juízes',
+        firstBook: 7, firstBookName: 'Juízes', family: [] },
+
+      { id: 14, name: 'Rute', sex: 'Mulher', testament: 'Antigo', people: 'Moabita',
+        occupations: [], era: 4, eraName: 'Juízes',
+        firstBook: 8, firstBookName: 'Rute', family: [] },
+
+      { id: 15, name: 'Ester', sex: 'Mulher', testament: 'Antigo', people: 'Benjamim',
+        occupations: ['Rainha'], era: 8, eraName: 'Pós-exílio',
+        firstBook: 17, firstBookName: 'Ester', family: [] },
+
+      { id: 16, name: 'Daniel', sex: 'Homem', testament: 'Antigo', people: 'Judá',
+        occupations: ['Profeta'], era: 7, eraName: 'Exílio',
+        firstBook: 27, firstBookName: 'Daniel', family: [] },
+
+      { id: 17, name: 'Elias', sex: 'Homem', testament: 'Antigo', people: 'Israelita',
+        occupations: ['Profeta'], era: 6, eraName: 'Reino Dividido',
+        firstBook: 11, firstBookName: '1 Reis', family: [] },
+
+      { id: 18, name: 'Abraão', sex: 'Homem', testament: 'Antigo', people: 'Hebreu',
+        occupations: ['Pastor'], era: 1, eraName: 'Patriarcas',
+        firstBook: 1, firstBookName: 'Gênesis', family: [19, 20] },
+
+      { id: 19, name: 'Sara', sex: 'Mulher', testament: 'Antigo', people: 'Hebreu',
+        occupations: [], era: 1, eraName: 'Patriarcas',
+        firstBook: 1, firstBookName: 'Gênesis', family: [18, 20] },
+
+      { id: 20, name: 'Isaque', sex: 'Homem', testament: 'Antigo', people: 'Hebreu',
+        occupations: ['Pastor'], era: 1, eraName: 'Patriarcas',
+        firstBook: 1, firstBookName: 'Gênesis', family: [18, 19, 21] },
+
+      { id: 21, name: 'Jacó', sex: 'Homem', testament: 'Antigo', people: 'Hebreu',
+        occupations: ['Pastor'], era: 1, eraName: 'Patriarcas',
+        firstBook: 1, firstBookName: 'Gênesis', family: [20, 22] },
+
+      { id: 22, name: 'José', sex: 'Homem', testament: 'Antigo', people: 'Hebreu',
+        occupations: ['Governador'], era: 1, eraName: 'Patriarcas',
+        firstBook: 1, firstBookName: 'Gênesis', family: [21] },
+
+      { id: 23, name: 'Jesus', sex: 'Homem', testament: 'Novo', people: 'Judeu',
+        occupations: ['Mestre'], era: 9, eraName: 'Período de Jesus',
+        firstBook: 40, firstBookName: 'Mateus', family: [24] },
+
+      { id: 24, name: 'Maria', sex: 'Mulher', testament: 'Novo', people: 'Judeu',
+        occupations: [], era: 9, eraName: 'Período de Jesus',
+        firstBook: 40, firstBookName: 'Mateus', family: [23] },
+
+      { id: 25, name: 'Pedro', sex: 'Homem', testament: 'Novo', people: 'Judeu',
+        occupations: ['Pescador', 'Apóstolo'], era: 9, eraName: 'Período de Jesus',
+        firstBook: 40, firstBookName: 'Mateus', family: [26] },
+
+      { id: 26, name: 'André', sex: 'Homem', testament: 'Novo', people: 'Judeu',
+        occupations: ['Pescador', 'Apóstolo'], era: 9, eraName: 'Período de Jesus',
+        firstBook: 40, firstBookName: 'Mateus', family: [25] },
+
+      { id: 27, name: 'João', sex: 'Homem', testament: 'Novo', people: 'Judeu',
+        occupations: ['Pescador', 'Apóstolo'], era: 9, eraName: 'Período de Jesus',
+        firstBook: 40, firstBookName: 'Mateus', family: [28] },
+
+      { id: 28, name: 'Tiago', sex: 'Homem', testament: 'Novo', people: 'Judeu',
+        occupations: ['Pescador', 'Apóstolo'], era: 9, eraName: 'Período de Jesus',
+        firstBook: 40, firstBookName: 'Mateus', family: [27] },
+
+      { id: 29, name: 'Paulo', sex: 'Homem', testament: 'Novo', people: 'Benjamim',
+        occupations: ['Apóstolo'], era: 10, eraName: 'Igreja Apostólica',
+        firstBook: 44, firstBookName: 'Atos', family: [] },
+
+      { id: 30, name: 'Barnabé', sex: 'Homem', testament: 'Novo', people: 'Levi',
+        occupations: ['Missionário'], era: 10, eraName: 'Igreja Apostólica',
+        firstBook: 44, firstBookName: 'Atos', family: [] },
+
+      { id: 31, name: 'Adão', sex: 'Homem', testament: 'Antigo', people: 'Humanidade primitiva',
+        occupations: ['Lavrador'], era: 0, eraName: 'Primórdios',
+        firstBook: 1, firstBookName: 'Gênesis', family: [36, 37] },
+
+      { id: 32, name: 'Noé', sex: 'Homem', testament: 'Antigo', people: 'Humanidade primitiva',
+        occupations: ['Lavrador'], era: 0, eraName: 'Primórdios',
+        firstBook: 1, firstBookName: 'Gênesis', family: [] },
+
+      { id: 33, name: 'Abednego', sex: 'Homem', testament: 'Antigo', people: 'Judá',
+        occupations: ['Oficial'], era: 7, eraName: 'Exílio',
+        firstBook: 27, firstBookName: 'Daniel', family: [] },
+
+      { id: 34, name: 'Jó', sex: 'Homem', testament: 'Antigo', people: 'Uz',
+        occupations: [], era: 1, eraName: 'Patriarcas',
+        firstBook: 18, firstBookName: 'Jó', family: [] },
+
+      { id: 35, name: 'Ló', sex: 'Homem', testament: 'Antigo', people: 'Hebreu',
+        occupations: ['Pastor'], era: 1, eraName: 'Patriarcas',
+        firstBook: 1, firstBookName: 'Gênesis', family: [18] },
+
+      { id: 36, name: 'Eva', sex: 'Mulher', testament: 'Antigo', people: 'Humanidade primitiva',
+        occupations: [], era: 0, eraName: 'Primórdios',
+        firstBook: 1, firstBookName: 'Gênesis', family: [31, 37] },
+
+      { id: 37, name: 'Caim', sex: 'Homem', testament: 'Antigo', people: 'Humanidade primitiva',
+        occupations: ['Lavrador'], era: 0, eraName: 'Primórdios',
+        firstBook: 1, firstBookName: 'Gênesis', family: [31, 36] }
     ];
 
     const autocompleteList = document.getElementById('autocompleteList');
@@ -743,9 +819,9 @@
         .trim();
     }
 
-    // Nesta versão local, Davi é o personagem secreto fixo.
-    // No Supabase, apenas o backend saberá essa resposta.
-    const secretCharacter = characters.find(character => character.name === 'Davi');
+    // Temporário para desenvolvimento: a resposta é sorteada a cada carregamento.
+    // Depois o Supabase definirá um único personagem secreto por dia.
+    const secretCharacter = characters[Math.floor(Math.random() * characters.length)];
     const maxAttempts = 8;
     const guesses = [];
     let gameFinished = false;
