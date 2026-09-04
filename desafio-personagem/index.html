@@ -176,6 +176,12 @@
       padding: 0 22px;
     }
 
+    .guess-button:disabled,
+    .guess-form input:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
     .board-wrap { overflow-x: auto; padding-bottom: 6px; }
 
     .board {
@@ -220,6 +226,51 @@
       color: #aaa59b;
     }
 
+    .game-message {
+      width: min(620px, 100%);
+      margin: -18px auto 26px;
+      min-height: 22px;
+      text-align: center;
+      font-size: .9rem;
+      font-weight: 750;
+      color: var(--muted);
+    }
+
+    .game-message.success { color: #477d3f; }
+    .game-message.error { color: #a64640; }
+
+    .cell.result-green {
+      background: var(--green);
+      border-color: var(--green);
+      color: white;
+    }
+
+    .cell.result-yellow {
+      background: var(--yellow);
+      border-color: var(--yellow);
+      color: #2d2718;
+    }
+
+    .cell.result-red {
+      background: var(--red);
+      border-color: var(--red);
+      color: white;
+    }
+
+    .cell.character-cell {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: .88rem;
+    }
+
+    .cell .subvalue {
+      display: block;
+      margin-top: 4px;
+      font-size: .67rem;
+      font-weight: 700;
+      opacity: .88;
+    }
+
     .legend {
       display: flex;
       justify-content: center;
@@ -242,6 +293,66 @@
     .green { background: var(--green); }
     .yellow { background: var(--yellow); }
     .red { background: var(--red); }
+
+    .result-dialog {
+      width: min(480px, calc(100% - 24px));
+    }
+
+    .result-body {
+      padding: 28px 24px 24px;
+      text-align: center;
+    }
+
+    .result-icon {
+      font-size: 2.4rem;
+      margin-bottom: 8px;
+    }
+
+    .result-body h2 {
+      margin: 0 0 8px;
+      font-size: 1.65rem;
+    }
+
+    .result-body > p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .share-result {
+      margin: 22px 0 18px;
+      padding: 18px;
+      border-radius: 14px;
+      background: #f6f3ed;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      line-height: 1.65;
+      white-space: pre-line;
+      text-align: center;
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 9px;
+      margin-top: 18px;
+    }
+
+    .result-actions button {
+      flex: 1;
+      border: 0;
+      border-radius: 12px;
+      padding: 13px 15px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .share-button {
+      background: var(--accent);
+      color: white;
+    }
+
+    .secondary-button {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
 
     dialog {
       width: min(800px, calc(100% - 24px));
@@ -362,6 +473,7 @@
       </div>
       <button class="guess-button" type="submit">Adivinhar</button>
     </form>
+    <div class="game-message" id="gameMessage" aria-live="polite"></div>
 
     <section class="board-wrap" aria-label="Tentativas">
       <div class="board">
@@ -386,6 +498,21 @@
       <span><i class="dot red"></i>diferente</span>
     </div>
   </main>
+
+  <dialog id="resultModal" class="result-dialog">
+    <div class="result-body">
+      <div class="result-icon">🎉</div>
+      <h2 id="resultTitle">Você encontrou!</h2>
+      <p id="resultSubtitle"></p>
+
+      <div class="share-result" id="shareResult"></div>
+
+      <div class="result-actions">
+        <button class="secondary-button" id="closeResult" type="button">Fechar</button>
+        <button class="share-button" id="shareButton" type="button">Compartilhar</button>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="rulesModal">
     <div class="modal-head">
@@ -503,6 +630,11 @@
     const guessForm = document.getElementById('guessForm');
     const guessInput = document.getElementById('guessInput');
     const rulesModal = document.getElementById('rulesModal');
+    const resultModal = document.getElementById('resultModal');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultSubtitle = document.getElementById('resultSubtitle');
+    const shareResult = document.getElementById('shareResult');
+    const shareButton = document.getElementById('shareButton');
 
     // Estrutura visual inicial: 8 linhas vazias.
     function renderEmptyRows() {
@@ -523,38 +655,82 @@
     // Base temporária para desenvolver o autocomplete.
     // Depois esta lista virá da base pública de personagens do Supabase.
     const characters = [
-      { id: 1, name: 'Abraão' },
-      { id: 2, name: 'Absalão' },
-      { id: 3, name: 'Adão' },
-      { id: 4, name: 'Ana' },
-      { id: 5, name: 'Daniel' },
-      { id: 6, name: 'Davi' },
-      { id: 7, name: 'Elias' },
-      { id: 8, name: 'Ester' },
-      { id: 9, name: 'Eva' },
-      { id: 10, name: 'Gideão' },
-      { id: 11, name: 'Golias' },
-      { id: 12, name: 'Isaque' },
-      { id: 13, name: 'Jacó' },
-      { id: 14, name: 'Jesus' },
-      { id: 15, name: 'Jó' },
-      { id: 16, name: 'Jonas' },
-      { id: 17, name: 'José' },
-      { id: 18, name: 'Josué' },
-      { id: 19, name: 'Maria' },
-      { id: 20, name: 'Moisés' },
-      { id: 21, name: 'Noé' },
-      { id: 22, name: 'Paulo' },
-      { id: 23, name: 'Pedro' },
-      { id: 24, name: 'Rute' },
-      { id: 25, name: 'Salomão' },
-      { id: 26, name: 'Samuel' },
-      { id: 27, name: 'Sansão' },
-      { id: 28, name: 'Sara' },
-      { id: 29, name: 'Saul' }
+      {
+        id: 1, name: 'Davi', sex: 'Homem', testament: 'Antigo',
+        people: 'Judá', occupations: ['Pastor', 'Guerreiro', 'Rei', 'Músico'],
+        era: 5, eraName: 'Reino Unido', firstBook: 9, firstBookName: '1 Samuel',
+        family: [2, 3, 4]
+      },
+      {
+        id: 2, name: 'Salomão', sex: 'Homem', testament: 'Antigo',
+        people: 'Judá', occupations: ['Rei'],
+        era: 5, eraName: 'Reino Unido', firstBook: 10, firstBookName: '2 Samuel',
+        family: [1]
+      },
+      {
+        id: 3, name: 'Absalão', sex: 'Homem', testament: 'Antigo',
+        people: 'Judá', occupations: ['Príncipe'],
+        era: 5, eraName: 'Reino Unido', firstBook: 10, firstBookName: '2 Samuel',
+        family: [1]
+      },
+      {
+        id: 4, name: 'Jessé', sex: 'Homem', testament: 'Antigo',
+        people: 'Judá', occupations: [],
+        era: 5, eraName: 'Reino Unido', firstBook: 8, firstBookName: 'Rute',
+        family: [1]
+      },
+      {
+        id: 5, name: 'Saul', sex: 'Homem', testament: 'Antigo',
+        people: 'Benjamim', occupations: ['Rei', 'Guerreiro'],
+        era: 5, eraName: 'Reino Unido', firstBook: 9, firstBookName: '1 Samuel',
+        family: []
+      },
+      {
+        id: 6, name: 'Samuel', sex: 'Homem', testament: 'Antigo',
+        people: 'Levi', occupations: ['Profeta', 'Juiz'],
+        era: 4, eraName: 'Juízes', firstBook: 9, firstBookName: '1 Samuel',
+        family: [7]
+      },
+      {
+        id: 7, name: 'Ana', sex: 'Mulher', testament: 'Antigo',
+        people: 'Israelita', occupations: [],
+        era: 4, eraName: 'Juízes', firstBook: 9, firstBookName: '1 Samuel',
+        family: [6]
+      },
+      {
+        id: 8, name: 'Moisés', sex: 'Homem', testament: 'Antigo',
+        people: 'Levi', occupations: ['Pastor', 'Líder', 'Profeta'],
+        era: 2, eraName: 'Êxodo', firstBook: 2, firstBookName: 'Êxodo',
+        family: [9]
+      },
+      {
+        id: 9, name: 'Arão', sex: 'Homem', testament: 'Antigo',
+        people: 'Levi', occupations: ['Sacerdote'],
+        era: 2, eraName: 'Êxodo', firstBook: 2, firstBookName: 'Êxodo',
+        family: [8]
+      },
+      {
+        id: 10, name: 'Ester', sex: 'Mulher', testament: 'Antigo',
+        people: 'Benjamim', occupations: ['Rainha'],
+        era: 8, eraName: 'Pós-exílio', firstBook: 17, firstBookName: 'Ester',
+        family: []
+      },
+      {
+        id: 11, name: 'Pedro', sex: 'Homem', testament: 'Novo',
+        people: 'Judeu', occupations: ['Pescador', 'Apóstolo'],
+        era: 9, eraName: 'Período de Jesus', firstBook: 40, firstBookName: 'Mateus',
+        family: []
+      },
+      {
+        id: 12, name: 'Paulo', sex: 'Homem', testament: 'Novo',
+        people: 'Benjamim', occupations: ['Apóstolo'],
+        era: 10, eraName: 'Igreja Apostólica', firstBook: 44, firstBookName: 'Atos',
+        family: []
+      }
     ];
 
     const autocompleteList = document.getElementById('autocompleteList');
+    const gameMessage = document.getElementById('gameMessage');
     let filteredCharacters = [];
     let activeSuggestion = -1;
     let selectedCharacter = null;
@@ -565,6 +741,155 @@
         .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase()
         .trim();
+    }
+
+    // Nesta versão local, Davi é o personagem secreto fixo.
+    // No Supabase, apenas o backend saberá essa resposta.
+    const secretCharacter = characters.find(character => character.name === 'Davi');
+    const maxAttempts = 8;
+    const guesses = [];
+    let gameFinished = false;
+
+    const challengeNumber = 1;
+
+    function resultEmoji(result) {
+      if (result === 'green') return '🟩';
+      if (result === 'yellow') return '🟨';
+      return '🟥';
+    }
+
+    function buildShareText() {
+      const lines = guesses.map(guess => {
+        const result = compareCharacter(guess, secretCharacter);
+        return [
+          result.sex,
+          result.testament,
+          result.people,
+          result.occupation,
+          result.era,
+          result.book,
+          result.family
+        ].map(resultEmoji).join('');
+      });
+
+      return `Personagem Bíblico #${String(challengeNumber).padStart(3, '0')}\n` +
+        `${guesses.length}/${maxAttempts}\n\n` +
+        lines.join('\n') +
+        `\n\nhttps://viniceosm.github.io/biblia-social/desafio-personagem/`;
+    }
+
+    function openWinModal() {
+      const shareText = buildShareText();
+      resultTitle.textContent = `Você encontrou ${secretCharacter.name}!`;
+      resultSubtitle.textContent = `Acertou em ${guesses.length} tentativa${guesses.length > 1 ? 's' : ''}.`;
+      shareResult.textContent = shareText;
+      resultModal.showModal();
+    }
+
+    async function shareGameResult() {
+      const text = buildShareText();
+
+      try {
+        if (navigator.share) {
+          await navigator.share({ text });
+          return;
+        }
+
+        await navigator.clipboard.writeText(text);
+        const oldText = shareButton.textContent;
+        shareButton.textContent = 'Copiado!';
+        setTimeout(() => shareButton.textContent = oldText, 1600);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          try {
+            await navigator.clipboard.writeText(text);
+            shareButton.textContent = 'Copiado!';
+            setTimeout(() => shareButton.textContent = 'Compartilhar', 1600);
+          } catch (_) {
+            setMessage('Não foi possível compartilhar automaticamente.', 'error');
+          }
+        }
+      }
+    }
+
+    function setMessage(text, type = '') {
+      gameMessage.textContent = text;
+      gameMessage.className = `game-message${type ? ` ${type}` : ''}`;
+    }
+
+    function hasCommonOccupation(guess, secret) {
+      return guess.occupations.some(item => secret.occupations.includes(item));
+    }
+
+    function isDirectFamily(guess, secret) {
+      return guess.family.includes(secret.id) || secret.family.includes(guess.id);
+    }
+
+    function compareCharacter(guess, secret) {
+      const eraDistance = Math.abs(guess.era - secret.era);
+      const bookDistance = Math.abs(guess.firstBook - secret.firstBook);
+
+      return {
+        sex: guess.sex === secret.sex ? 'green' : 'red',
+        testament: guess.testament === secret.testament ? 'green' : 'red',
+        people: guess.people === secret.people ? 'green' : 'red',
+        occupation: hasCommonOccupation(guess, secret) ? 'green' : 'red',
+        era: eraDistance === 0 ? 'green' : eraDistance === 1 ? 'yellow' : 'red',
+        book: bookDistance === 0 ? 'green' : bookDistance <= 2 ? 'yellow' : 'red',
+        family: guess.id === secret.id ? 'green' : isDirectFamily(guess, secret) ? 'yellow' : 'red'
+      };
+    }
+
+    function directionLabel(current, target, labels) {
+      if (current === target) return '';
+      return current < target ? labels.forward : labels.backward;
+    }
+
+    function resultCell(value, result, subvalue = '') {
+      return `<div class="cell result-${result}">
+        <div>${value}${subvalue ? `<span class="subvalue">${subvalue}</span>` : ''}</div>
+      </div>`;
+    }
+
+    function renderBoard() {
+      attemptRows.innerHTML = '';
+
+      guesses.forEach(guess => {
+        const result = compareCharacter(guess, secretCharacter);
+        const eraDirection = result.era === 'yellow'
+          ? directionLabel(guess.era, secretCharacter.era, { forward: 'Resposta é posterior →', backward: '← Resposta é anterior' })
+          : '';
+        const bookDirection = result.book === 'yellow'
+          ? directionLabel(guess.firstBook, secretCharacter.firstBook, { forward: 'Resposta está à frente →', backward: '← Resposta está atrás' })
+          : '';
+
+        const occupationText = guess.occupations.length ? guess.occupations.join(', ') : '—';
+        const familyText = result.family === 'yellow' ? 'Parente direto' : (result.family === 'green' ? 'O próprio' : 'Sem parentesco');
+
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `
+          <div class="cell character-cell">${guess.name}</div>
+          ${resultCell(guess.sex, result.sex)}
+          ${resultCell(guess.testament, result.testament)}
+          ${resultCell(guess.people, result.people)}
+          ${resultCell(occupationText, result.occupation)}
+          ${resultCell(guess.eraName, result.era, eraDirection)}
+          ${resultCell(guess.firstBookName, result.book, bookDirection)}
+          ${resultCell(familyText, result.family)}
+        `;
+        attemptRows.appendChild(row);
+      });
+
+      for (let i = guesses.length; i < maxAttempts; i++) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `
+          <div class="cell empty">${i + 1}ª tentativa</div>
+          ${'<div class="cell empty">—</div>'.repeat(7)}
+        `;
+        attemptRows.appendChild(row);
+      }
     }
 
     function closeAutocomplete() {
@@ -661,11 +986,65 @@
       if (!event.target.closest('.guess-field')) closeAutocomplete();
     });
 
-    // Por enquanto o envio não consome tentativa: a validação real virá do Supabase.
-    // A integração com Supabase e a validação serão adicionadas depois.
     guessForm.addEventListener('submit', (event) => {
       event.preventDefault();
+
+      if (gameFinished) {
+        setMessage('O desafio de hoje já terminou.', 'success');
+        return;
+      }
+
+      const typed = normalizeText(guessInput.value);
+      const character = selectedCharacter ||
+        characters.find(item => normalizeText(item.name) === typed);
+
+      if (!character) {
+        setMessage('Selecione um personagem válido da lista.', 'error');
+        guessInput.focus();
+        return;
+      }
+
+      if (guesses.some(item => item.id === character.id)) {
+        setMessage('Você já tentou esse personagem. Essa tentativa não foi consumida.', 'error');
+        guessInput.select();
+        return;
+      }
+
+      guesses.push(character);
+      selectedCharacter = null;
+      guessInput.value = '';
+      closeAutocomplete();
+      renderBoard();
+
+      if (character.id === secretCharacter.id) {
+        gameFinished = true;
+        setMessage(`Desafio concluído em ${guesses.length} tentativa${guesses.length > 1 ? 's' : ''}!`, 'success');
+        openWinModal();
+        guessInput.disabled = true;
+        document.querySelector('.guess-button').disabled = true;
+        return;
+      }
+
+      if (guesses.length >= maxAttempts) {
+        gameFinished = true;
+        setMessage(`Fim de jogo. O personagem era ${secretCharacter.name}.`, 'error');
+        guessInput.disabled = true;
+        document.querySelector('.guess-button').disabled = true;
+        return;
+      }
+
+      setMessage(`Tentativa ${guesses.length}/${maxAttempts}. Continue!`);
       guessInput.focus();
+    });
+
+    document.getElementById('closeResult').addEventListener('click', () => resultModal.close());
+    shareButton.addEventListener('click', shareGameResult);
+
+    resultModal.addEventListener('click', (event) => {
+      const rect = resultModal.getBoundingClientRect();
+      const outside = event.clientX < rect.left || event.clientX > rect.right ||
+                      event.clientY < rect.top || event.clientY > rect.bottom;
+      if (outside) resultModal.close();
     });
 
     document.getElementById('openRules').addEventListener('click', () => rulesModal.showModal());
