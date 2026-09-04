@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personagem Bíblico do Dia</title>
+  <style>
+    :root {
+      --bg: #f7f5ef;
+      --card: #ffffff;
+      --text: #25231f;
+      --muted: #706d65;
+      --line: #dedbd2;
+      --green: #69a85d;
+      --yellow: #d9ad42;
+      --red: #c95c55;
+      --accent: #5d4932;
+      --accent-soft: #eee7dc;
+      --shadow: 0 14px 40px rgba(49, 41, 31, .10);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    button, input { font: inherit; }
+
+    .app {
+      width: min(1040px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 34px 0 60px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 30px;
+    }
+
+    .brand small {
+      display: block;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      font-size: .72rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(1.7rem, 4vw, 2.55rem);
+      line-height: 1;
+    }
+
+    .rules-button, .guess-button, .close-button {
+      border: 0;
+      cursor: pointer;
+      border-radius: 12px;
+      font-weight: 800;
+    }
+
+    .rules-button {
+      background: var(--accent-soft);
+      color: var(--accent);
+      padding: 11px 15px;
+    }
+
+    .hero {
+      text-align: center;
+      margin: 10px auto 28px;
+    }
+
+    .hero .number {
+      color: var(--muted);
+      font-size: .85rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+
+    .hero h2 {
+      margin: 8px 0 7px;
+      font-size: clamp(1.35rem, 3vw, 1.9rem);
+    }
+
+    .hero p { margin: 0; color: var(--muted); }
+
+    .guess-form {
+      width: min(620px, 100%);
+      margin: 0 auto 34px;
+      display: flex;
+      gap: 9px;
+    }
+
+    .guess-form input {
+      flex: 1;
+      min-width: 0;
+      border: 1px solid var(--line);
+      background: var(--card);
+      padding: 14px 16px;
+      border-radius: 12px;
+      outline: none;
+      box-shadow: 0 4px 16px rgba(49, 41, 31, .04);
+    }
+
+    .guess-form input:focus {
+      border-color: #9b8a73;
+      box-shadow: 0 0 0 3px rgba(93, 73, 50, .10);
+    }
+
+    .guess-button {
+      background: var(--accent);
+      color: white;
+      padding: 0 22px;
+    }
+
+    .board-wrap { overflow-x: auto; padding-bottom: 6px; }
+
+    .board {
+      min-width: 860px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1.25fr repeat(7, 1fr);
+      gap: 8px;
+    }
+
+    .cell {
+      min-height: 78px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 8px;
+      font-size: .78rem;
+      font-weight: 800;
+    }
+
+    .head .cell {
+      min-height: 42px;
+      background: transparent;
+      border: 0;
+      color: var(--muted);
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .empty {
+      background: rgba(255,255,255,.46);
+      border-style: dashed;
+      color: #aaa59b;
+    }
+
+    .legend {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      color: var(--muted);
+      margin-top: 18px;
+      font-size: .82rem;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 11px;
+      height: 11px;
+      border-radius: 3px;
+      margin-right: 5px;
+      vertical-align: -1px;
+    }
+
+    .green { background: var(--green); }
+    .yellow { background: var(--yellow); }
+    .red { background: var(--red); }
+
+    dialog {
+      width: min(800px, calc(100% - 24px));
+      max-height: min(720px, calc(100vh - 40px));
+      border: 0;
+      border-radius: 18px;
+      padding: 0;
+      background: var(--card);
+      color: var(--text);
+      box-shadow: var(--shadow);
+    }
+
+    dialog::backdrop { background: rgba(25, 22, 18, .58); }
+
+    .modal-head {
+      padding: 22px 22px 14px;
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-head h2 { margin: 0 0 5px; }
+    .modal-head p { margin: 0; color: var(--muted); font-size: .9rem; }
+
+    .close-button {
+      width: 38px;
+      height: 38px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 1.15rem;
+    }
+
+    .tabs {
+      display: flex;
+      overflow-x: auto;
+      gap: 7px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tab {
+      white-space: nowrap;
+      border: 0;
+      background: #f2f0ea;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 9px 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .tab.active { background: var(--accent); color: white; }
+
+    .tab-content {
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .panel h3 { margin: 0 0 9px; font-size: 1.35rem; }
+    .panel p, .panel li { color: #565249; line-height: 1.55; }
+    .panel ul { padding-left: 20px; }
+
+    .rule-box {
+      margin-top: 18px;
+      padding: 15px;
+      background: #f6f3ed;
+      border-radius: 12px;
+    }
+
+    .rule-line { margin: 7px 0; }
+
+    .note {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .88rem;
+    }
+
+    @media (max-width: 620px) {
+      .app { padding-top: 22px; }
+      header { align-items: flex-start; }
+      .rules-button { padding: 10px 12px; }
+      .guess-form { flex-direction: column; }
+      .guess-button { padding: 13px 18px; }
+      .modal-head { padding: 18px; }
+      .tab-content { padding: 20px 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">
+        <small>Desafio diário</small>
+        <h1>Personagem Bíblico</h1>
+      </div>
+      <button class="rules-button" id="openRules" type="button">Como jogar?</button>
+    </header>
+
+    <section class="hero">
+      <div class="number">Personagem Bíblico #001</div>
+      <h2>Quem é o personagem de hoje?</h2>
+      <p>Você tem 8 tentativas para descobrir.</p>
+    </section>
+
+    <form class="guess-form" id="guessForm">
+      <input id="guessInput" type="text" placeholder="Digite um personagem bíblico..." autocomplete="off" aria-label="Personagem bíblico" />
+      <button class="guess-button" type="submit">Adivinhar</button>
+    </form>
+
+    <section class="board-wrap" aria-label="Tentativas">
+      <div class="board">
+        <div class="row head">
+          <div class="cell">Personagem</div>
+          <div class="cell">Sexo</div>
+          <div class="cell">Testamento</div>
+          <div class="cell">Tribo / Povo</div>
+          <div class="cell">Ocupação</div>
+          <div class="cell">Época</div>
+          <div class="cell">Livro</div>
+          <div class="cell">Família</div>
+        </div>
+
+        <div id="attemptRows"></div>
+      </div>
+    </section>
+
+    <div class="legend">
+      <span><i class="dot green"></i>igual</span>
+      <span><i class="dot yellow"></i>próximo / relacionado</span>
+      <span><i class="dot red"></i>diferente</span>
+    </div>
+  </main>
+
+  <dialog id="rulesModal">
+    <div class="modal-head">
+      <div>
+        <h2>Como jogar</h2>
+        <p>Compare seus palpites com o personagem secreto. Amarelo existe apenas em Época, Livro e Família.</p>
+      </div>
+      <button class="close-button" id="closeRules" aria-label="Fechar regras">×</button>
+    </div>
+
+    <nav class="tabs" aria-label="Características">
+      <button class="tab active" data-tab="sexo">Sexo</button>
+      <button class="tab" data-tab="testamento">Testamento</button>
+      <button class="tab" data-tab="tribo">Tribo/Povo</button>
+      <button class="tab" data-tab="ocupacao">Ocupação</button>
+      <button class="tab" data-tab="epoca">Época</button>
+      <button class="tab" data-tab="livro">Livro</button>
+      <button class="tab" data-tab="familia">Família</button>
+    </nav>
+
+    <div class="tab-content">
+      <section class="panel active" data-panel="sexo">
+        <h3>Sexo</h3>
+        <p>Compara o sexo do personagem escolhido com o personagem secreto.</p>
+        <div class="rule-box">
+          <div class="rule-line">🟩 <strong>Verde:</strong> mesmo sexo.</div>
+          <div class="rule-line">🟥 <strong>Vermelho:</strong> sexo diferente.</div>
+        </div>
+        <p>Essa característica não possui resultado amarelo.</p>
+      </section>
+
+      <section class="panel" data-panel="testamento">
+        <h3>Testamento</h3>
+        <p>Indica se o personagem pertence ao Antigo ou ao Novo Testamento.</p>
+        <div class="rule-box">
+          <div class="rule-line">🟩 <strong>Verde:</strong> mesmo Testamento.</div>
+          <div class="rule-line">🟥 <strong>Vermelho:</strong> Testamentos diferentes.</div>
+        </div>
+        <p>Essa característica não possui resultado amarelo.</p>
+      </section>
+
+      <section class="panel" data-panel="tribo">
+        <h3>Tribo / Povo</h3>
+        <p>Compara a tribo ou o povo associado ao personagem. Isso permite incluir personagens que não pertencem às doze tribos de Israel, como filisteus, moabitas, egípcios e gentios.</p>
+        <div class="rule-box">
+          <div class="rule-line">🟩 <strong>Verde:</strong> mesma tribo ou povo.</div>
+          <div class="rule-line">🟥 <strong>Vermelho:</strong> tribo ou povo diferente.</div>
+        </div>
+        <p>Não existe “tribo próxima”: por isso essa característica não possui amarelo.</p>
+      </section>
+
+      <section class="panel" data-panel="ocupacao">
+        <h3>Ocupação</h3>
+        <p>Um personagem pode ter mais de uma ocupação ou papel bíblico, como rei, pastor, profeta, guerreiro ou sacerdote.</p>
+        <div class="rule-box">
+          <div class="rule-line">🟩 <strong>Verde:</strong> o personagem possui ao menos uma ocupação em comum com o secreto.</div>
+          <div class="rule-line">🟥 <strong>Vermelho:</strong> nenhuma ocupação em comum.</div>
+        </div>
+        <p>Quando houver várias ocupações, elas poderão ser exibidas separadamente para mostrar quais coincidem.</p>
+      </section>
+
+      <section class="panel" data-panel="epoca">
+        <h3>Época</h3>
+        <p>Os personagens são organizados em eras bíblicas, evitando depender de datas históricas exatas.</p>
+        <ul>
+          <li>Patriarcas</li>
+          <li>Êxodo</li>
+          <li>Conquista</li>
+          <li>Juízes</li>
+          <li>Reino Unido</li>
+          <li>Reino Dividido</li>
+          <li>Exílio</li>
+          <li>Pós-exílio</li>
+          <li>Período de Jesus</li>
+          <li>Igreja Apostólica</li>
+        </ul>
+        <div class="rule-box">
+          <div class="rule-line">🟩 <strong>Verde:</strong> mesma era.</div>
+          <div class="rule-line">🟨 <strong>Amarelo:</strong> era imediatamente anterior ou posterior.</div>
+          <div class="rule-line">🟥 <strong>Vermelho:</strong> duas ou mais eras de distância.</div>
+        </div>
+        <p>Uma indicação de direção poderá informar se o personagem secreto está em uma era anterior ou posterior.</p>
+      </section>
+
+      <section class="panel" data-panel="livro">
+        <h3>Livro</h3>
+        <p>Compara o livro bíblico da primeira aparição de cada personagem, seguindo a ordem canônica adotada pelo jogo.</p>
+        <div class="rule-box">
+          <div class="rule-line">🟩 <strong>Verde:</strong> primeira aparição no mesmo livro.</div>
+          <div class="rule-line">🟨 <strong>Amarelo:</strong> primeira aparição a até 2 livros de distância.</div>
+          <div class="rule-line">🟥 <strong>Vermelho:</strong> distância maior que 2 livros.</div>
+        </div>
+        <p>Quando útil, uma seta indicará se a resposta está mais à frente ou mais atrás na ordem bíblica.</p>
+      </section>
+
+      <section class="panel" data-panel="familia">
+        <h3>Família</h3>
+        <p>Verifica se o personagem escolhido possui parentesco direto com o personagem secreto.</p>
+        <p>Na primeira versão, contam como parentesco direto: pai/mãe e filho(a), irmãos e cônjuges.</p>
+        <div class="rule-box">
+          <div class="rule-line">🟨 <strong>Amarelo:</strong> os dois personagens possuem parentesco direto.</div>
+          <div class="rule-line">🟥 <strong>Vermelho:</strong> não possuem parentesco direto.</div>
+        </div>
+        <p>Família é uma categoria especial e, entre personagens diferentes, não utiliza o verde.</p>
+      </section>
+
+      <div class="note">
+        <strong>Regras gerais:</strong> são 8 tentativas por dia; personagens repetidos não consomem tentativa; apenas personagens existentes na base poderão ser selecionados. O desafio muda diariamente e todos recebem o mesmo personagem.
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    const attemptRows = document.getElementById('attemptRows');
+    const guessForm = document.getElementById('guessForm');
+    const guessInput = document.getElementById('guessInput');
+    const rulesModal = document.getElementById('rulesModal');
+
+    // Estrutura visual inicial: 8 linhas vazias.
+    function renderEmptyRows() {
+      attemptRows.innerHTML = '';
+      for (let i = 0; i < 8; i++) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `
+          <div class="cell empty">${i + 1}ª tentativa</div>
+          ${'<div class="cell empty">—</div>'.repeat(7)}
+        `;
+        attemptRows.appendChild(row);
+      }
+    }
+
+    renderEmptyRows();
+
+    // Por enquanto o formulário é apenas parte do escopo visual.
+    // A integração com Supabase e a validação serão adicionadas depois.
+    guessForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      guessInput.focus();
+    });
+
+    document.getElementById('openRules').addEventListener('click', () => rulesModal.showModal());
+    document.getElementById('closeRules').addEventListener('click', () => rulesModal.close());
+
+    rulesModal.addEventListener('click', (event) => {
+      const rect = rulesModal.getBoundingClientRect();
+      const outside = event.clientX < rect.left || event.clientX > rect.right ||
+                      event.clientY < rect.top || event.clientY > rect.bottom;
+      if (outside) rulesModal.close();
+    });
+
+    document.querySelectorAll('.tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+
+        tab.classList.add('active');
+        document.querySelector(`[data-panel="${tab.dataset.tab}"]`).classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>
