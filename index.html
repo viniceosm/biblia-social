@@ -318,21 +318,14 @@
       document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.view === id));
       if(id === 'bible') requestAnimationFrame(() => updateChapterReadStates());
 
-      if(id === 'feed' && loadedGenesisVerses.length){
-        // Sempre retoma a leitura no primeiro versículo ainda não lido.
+      if(explicitVerseNavigation){
+        explicitVerseNavigation = false;
+      }else if(id === 'feed' && loadedGenesisVerses.length){
         requestAnimationFrame(() => scrollToFirstUnread(loadedGenesisVerses));
       }else if(id === 'vertical' && loadedGenesisVerses.length){
-        // No modo vertical, também retoma no primeiro versículo ainda não lido.
         const readVerses = getReadVerses();
-        const firstUnread = loadedGenesisVerses.find(v =>
-          !readVerses.has(`arc-gn-${v.chapter}-${v.verse}`)
-        );
-
-        if(firstUnread){
-          requestAnimationFrame(() =>
-            scrollVerticalToVerse(firstUnread.chapter, firstUnread.verse)
-          );
-        }
+        const firstUnread = loadedGenesisVerses.find(v => !readVerses.has(`arc-gn-${v.chapter}-${v.verse}`));
+        if(firstUnread) requestAnimationFrame(() => scrollVerticalToVerse(firstUnread.chapter,firstUnread.verse));
       }else{
         window.scrollTo({top:0,behavior:'smooth'});
       }
@@ -721,6 +714,7 @@
 
 
     let selectedVerse = null;
+    let explicitVerseNavigation = false;
 
     function askOpenVerse(book, chapter, verse, event){
       if(event) event.stopPropagation();
@@ -740,6 +734,7 @@
       closeVerseModal();
 
       if(mode === 'feed'){
+        explicitVerseNavigation = true;
         showView('feed');
         if(verse.book === 'Gênesis'){
           setTimeout(()=>{
@@ -748,6 +743,7 @@
           },120);
         }
       }else{
+        explicitVerseNavigation = true;
         showView('vertical');
         // Mantém a referência selecionada disponível para a próxima evolução
         // do modo vertical dinâmico.
