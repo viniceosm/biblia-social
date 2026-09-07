@@ -319,13 +319,11 @@
       if(id === 'bible') requestAnimationFrame(() => updateChapterReadStates());
 
       if(explicitVerseNavigation){
-        explicitVerseNavigation = false;
-      }else if(id === 'feed' && loadedGenesisVerses.length){
-        requestAnimationFrame(() => scrollToFirstUnread(loadedGenesisVerses));
-      }else if(id === 'vertical' && loadedGenesisVerses.length){
-        const readVerses = getReadVerses();
-        const firstUnread = loadedGenesisVerses.find(v => !readVerses.has(`arc-gn-${v.chapter}-${v.verse}`));
-        if(firstUnread) requestAnimationFrame(() => scrollVerticalToVerse(firstUnread.chapter,firstUnread.verse));
+        explicitVerseNavigation=false;
+      }else if(id==='feed' && allBibleVerses.length){
+        scrollToFirstUnread();
+      }else if(id==='vertical' && allBibleVerses.length){
+        scrollVerticalToFirstUnread();
       }else{
         window.scrollTo({top:0,behavior:'smooth'});
       }
@@ -367,449 +365,212 @@
     }));
 
 
-    // Feed bíblico dinâmico. A fonte é um repositório JSON público no GitHub.
-    // Começamos em Gênesis e mantemos a ordem recebida: capítulo 1, verso 1, 2, 3...
-    const BIBLE_URL = 'https://raw.githubusercontent.com/MaatheusGois/bible/main/versions/pt-br/arc/gn/gn.json';
+    // Bíblia ARC completa. Os dados ficam em memória, mas o DOM recebe somente
+    // uma janela pequena de versículos para manter o celular leve.
+    const BIBLE_URL = 'https://raw.githubusercontent.com/MaatheusGois/bible/main/versions/pt-br/arc.json';
     const bibleFeed = document.getElementById('bibleFeed');
+    const PAGE_SIZE = 30;
 
-    function normalizeGenesis(data){
-      const verses = [];
-      // O dataset pode variar de formato. Estes caminhos cobrem as estruturas
-      // mais comuns do repositório sem acoplar a interface a uma única forma.
-      const root = data.book || data;
-      const chapters = root.chapters || root.chapter || (Array.isArray(root) ? root : []);
+    const bookMeta = [
+      ['Gênesis','gn',50],['Êxodo','ex',40],['Levítico','lv',27],['Números','nm',36],['Deuteronômio','dt',34],
+      ['Josué','js',24],['Juízes','jz',21],['Rute','rt',4],['1 Samuel','1sm',31],['2 Samuel','2sm',24],
+      ['1 Reis','1rs',22],['2 Reis','2rs',25],['1 Crônicas','1cr',29],['2 Crônicas','2cr',36],['Esdras','ed',10],
+      ['Neemias','ne',13],['Ester','et',10],['Jó','job',42],['Salmos','sl',150],['Provérbios','pv',31],
+      ['Eclesiastes','ec',12],['Cantares','ct',8],['Isaías','is',66],['Jeremias','jr',52],['Lamentações','lm',5],
+      ['Ezequiel','ez',48],['Daniel','dn',12],['Oseias','os',14],['Joel','jl',3],['Amós','am',9],
+      ['Obadias','ob',1],['Jonas','jn',4],['Miqueias','mq',7],['Naum','na',3],['Habacuque','hc',3],
+      ['Sofonias','sf',3],['Ageu','ag',2],['Zacarias','zc',14],['Malaquias','ml',4],
+      ['Mateus','mt',28],['Marcos','mc',16],['Lucas','lc',24],['João','jo',21],['Atos','at',28],
+      ['Romanos','rm',16],['1 Coríntios','1co',16],['2 Coríntios','2co',13],['Gálatas','gl',6],['Efésios','ef',6],
+      ['Filipenses','fp',4],['Colossenses','cl',4],['1 Tessalonicenses','1ts',5],['2 Tessalonicenses','2ts',3],
+      ['1 Timóteo','1tm',6],['2 Timóteo','2tm',4],['Tito','tt',3],['Filemom','fm',1],['Hebreus','hb',13],
+      ['Tiago','tg',5],['1 Pedro','1pe',5],['2 Pedro','2pe',3],['1 João','1jo',5],['2 João','2jo',1],
+      ['3 João','3jo',1],['Judas','jd',1],['Apocalipse','ap',22]
+    ];
 
-      if(Array.isArray(chapters)){
-        chapters.forEach((chapter, ci) => {
-          const chapterNumber = Number(chapter.chapter || chapter.number || chapter.id || ci + 1);
+    let allBibleVerses = [];
+    let loadedGenesisVerses = []; // compatibilidade com funções anteriores
+    let feedWindowStart = 0;
+    let verticalWindowStart = 0;
+    let explicitVerseNavigation = false;
+    let selectedVerse = null;
+
+    function normalizeBible(data){
+      const out = [];
+      const books = Array.isArray(data) ? data : (data.books || data.book || []);
+      if(!Array.isArray(books)) return out;
+
+      books.forEach((book, bi)=>{
+        const meta = bookMeta[bi] || [book.name || `Livro ${bi+1}`, book.abbrev || book.abbreviation || `b${bi+1}`, 0];
+        const name = book.name || book.book || meta[0];
+        const slug = String(book.abbrev || book.abbreviation || meta[1]).toLowerCase();
+        const chapters = book.chapters || book.chapter || [];
+        if(!Array.isArray(chapters)) return;
+
+        chapters.forEach((chapter, ci)=>{
           const list = chapter.verses || chapter.verse || (Array.isArray(chapter) ? chapter : []);
-          if(Array.isArray(list)){
-            list.forEach((v, vi) => {
-              const text = typeof v === 'string' ? v : (v.text || v.verse_text || v.content || '');
-              if(text) verses.push({chapter:chapterNumber, verse:Number(v.verse || v.number || v.id || vi+1), text});
+          if(!Array.isArray(list)) return;
+          list.forEach((v, vi)=>{
+            const text = typeof v === 'string' ? v : (v.text || v.verse_text || v.content || '');
+            if(text) out.push({
+              book:name, slug, bookIndex:bi,
+              chapter:Number(chapter.chapter || chapter.number || ci+1),
+              verse:Number((typeof v==='object' && (v.verse || v.number)) || vi+1),
+              text
             });
-          }
+          });
         });
-      }
-
-      // Some full-book JSONs are a flat verse array.
-      if(!verses.length && Array.isArray(data)){
-        data.forEach((v, i)=>{
-          if(v && typeof v === 'object' && v.text){
-            verses.push({chapter:Number(v.chapter||1),verse:Number(v.verse||v.number||i+1),text:v.text});
-          }
-        });
-      }
-      return verses;
+      });
+      return out;
     }
+
+    function verseId(v){ return `arc-${v.slug}-${v.chapter}-${v.verse}`; }
+    function escapeHtml(text){return String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
+
+    const READ_STORAGE_KEY='scriptura.readVerses.v1';
+    function getReadVerses(){try{return new Set(JSON.parse(localStorage.getItem(READ_STORAGE_KEY)||'[]'))}catch(e){return new Set()}}
+    function saveReadVerses(set){try{localStorage.setItem(READ_STORAGE_KEY,JSON.stringify([...set]))}catch(e){console.warn(e)}}
+    function applyReadState(btn,done){btn.classList.toggle('read',done);btn.innerHTML=done?'✓ Lida':'○ Lida';btn.setAttribute('aria-pressed',done?'true':'false')}
+    function toggleRead(btn){
+      const id=btn.dataset.verseId;if(!id)return;
+      const set=getReadVerses(),done=!set.has(id);done?set.add(id):set.delete(id);saveReadVerses(set);applyReadState(btn,done);
+      updateChapterReadStates();
+    }
+    function restoreReadStates(root=document){const set=getReadVerses();root.querySelectorAll('.read-btn[data-verse-id]').forEach(b=>applyReadState(b,set.has(b.dataset.verseId)))}
 
     function versePost(v){
       const article=document.createElement('article');
-      article.className='post';
-      article.id=`verse-arc-gn-${v.chapter}-${v.verse}`;
-      article.dataset.verseId=`arc-gn-${v.chapter}-${v.verse}`;
+      article.className='post';article.id=`verse-${verseId(v)}`;article.dataset.verseId=verseId(v);
       article.innerHTML=`
-        <div class="post-head">
-          <div class="avatar">Gn</div>
-          <div>
-            <div><span class="name">@genesis</span> <span class="verified">◆ Escritura</span></div>
-            <div><span class="handle">Livro de Gênesis</span> · <span class="time">ARC</span></div>
-          </div>
-        </div>
-        <div class="verse-art">
-          <div class="verse-art-inner">
-            <div class="verse-art-icon">♧</div>
-            <p class="verse">“${escapeHtml(v.text)}”</p>
-            <div class="verse-art-line"></div>
-            <div class="verse-art-ref">Gênesis ${v.chapter}:${v.verse}</div>
-            <div class="verse-art-version">ALMEIDA REVISTA E CORRIGIDA</div>
-          </div>
-        </div>
-        <div class="actions">
-          <button onclick="like(this)">♡</button>
-          <button>◌</button>
-          <button class="read-btn" data-verse-id="arc-gn-${v.chapter}-${v.verse}" onclick="toggleRead(this)">○ Lida</button>
-          <button>↗</button>
-        </div>`;
+        <div class="post-head"><div class="avatar">${v.slug.slice(0,2).toUpperCase()}</div><div>
+        <div><span class="name">@${v.slug}</span> <span class="verified">◆ Escritura</span></div>
+        <div><span class="handle">Livro de ${v.book}</span> · <span class="time">ARC</span></div></div></div>
+        <div class="verse-art"><div class="verse-art-inner"><div class="verse-art-icon">♧</div>
+        <p class="verse">“${escapeHtml(v.text)}”</p><div class="verse-art-line"></div>
+        <div class="verse-art-ref">${v.book} ${v.chapter}:${v.verse}</div>
+        <div class="verse-art-version">ALMEIDA REVISTA E CORRIGIDA</div></div></div>
+        <div class="actions"><button onclick="like(this)">♡</button><button>◌</button>
+        <button class="read-btn" data-verse-id="${verseId(v)}" onclick="toggleRead(this)">○ Lida</button><button>↗</button></div>`;
       return article;
     }
 
-    function escapeHtml(text){
-      return String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-    }
-
-    async function loadGenesis(){
-      const localWarning = location.protocol === 'file:'
-        ? '<span style="font-size:12px;max-width:390px;margin-top:6px">O arquivo está aberto localmente. Se o navegador bloquear o acesso à API, mostraremos uma mensagem de erro em até 10 segundos.</span>'
-        : '';
-      bibleFeed.innerHTML='<div class="feed-status"><div class="feed-spinner"></div><strong>Carregando Gênesis...</strong><span>Buscando os versículos da Bíblia.</span>'+localWarning+'</div>';
-      try{
-        // Evita loading infinito, especialmente quando o HTML é aberto via file:// no iPhone.
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        let response;
-        try {
-          response = await fetch(BIBLE_URL, {
-            signal: controller.signal,
-            cache: 'no-store'
-          });
-        } finally {
-          clearTimeout(timeoutId);
-        }
-
-        if(!response.ok) throw new Error('HTTP '+response.status);
-        const data=await response.json();
-        const verses=normalizeGenesis(data);
-        if(!verses.length) throw new Error('Formato do JSON não reconhecido');
-
-        bibleFeed.innerHTML='';
-        verses.sort((a,b)=>a.chapter-b.chapter || a.verse-b.verse);
-        verses.forEach(v=>bibleFeed.appendChild(versePost(v)));
-        restoreReadStates(bibleFeed);
-        renderVerticalGenesis(verses);
-        scrollToFirstUnread(verses);
-
-        const end=document.createElement('div');
-        end.className='feed-end';
-        end.textContent=`${verses.length} versículos carregados de Gênesis • em ordem bíblica`;
-        bibleFeed.appendChild(end);
-      }catch(err){
-        console.error(err);
-
-        const isTimeout = err && err.name === 'AbortError';
-        const isLocalFile = location.protocol === 'file:';
-
-        let title = isTimeout
-          ? 'A Bíblia demorou demais para responder.'
-          : 'Não foi possível carregar Gênesis.';
-
-        let detail = isTimeout
-          ? 'A requisição foi cancelada automaticamente após 10 segundos para não deixar a tela carregando para sempre.'
-          : 'Não conseguimos acessar a fonte dos versículos neste momento.';
-
-        if(isLocalFile){
-          detail += ' Este HTML está aberto diretamente como arquivo (file://). Alguns navegadores, especialmente no iPhone, podem bloquear requisições externas nesse modo.';
-        }
-
-        bibleFeed.innerHTML=`
-          <div class="api-error">
-            <div style="font-size:34px;margin-bottom:12px">⚠</div>
-            <b>${title}</b>
-            <div style="max-width:430px;margin:8px auto 0;line-height:1.55">${detail}</div>
-            <div style="margin-top:8px;font-size:12px;opacity:.7">Fonte: Bíblia ARC • Gênesis</div>
-            <button onclick="loadGenesis()">Tentar novamente</button>
-          </div>`;
-      }
-    }
-
-
-    const chapterVerseCounts = {
-      'Gênesis': [31, 25, 24, 26, 32, 22, 24, 22, 29, 32, 32, 20, 18, 24, 21, 16, 27, 33, 38, 18, 34, 24, 20, 67, 34, 35, 46, 22, 35, 43, 55, 32, 20, 31, 29, 43, 36, 30, 23, 23, 57, 38, 34, 34, 28, 34, 31, 22, 33, 26]
-    };
-
-    const bibleBooks=[["Gênesis", 50, "AT"], ["Êxodo", 40, "AT"], ["Levítico", 27, "AT"], ["Números", 36, "AT"], ["Deuteronômio", 34, "AT"], ["Josué", 24, "AT"], ["Juízes", 21, "AT"], ["Rute", 4, "AT"], ["1 Samuel", 31, "AT"], ["2 Samuel", 24, "AT"], ["1 Reis", 22, "AT"], ["2 Reis", 25, "AT"], ["1 Crônicas", 29, "AT"], ["2 Crônicas", 36, "AT"], ["Esdras", 10, "AT"], ["Neemias", 13, "AT"], ["Ester", 10, "AT"], ["Jó", 42, "AT"], ["Salmos", 150, "AT"], ["Provérbios", 31, "AT"], ["Eclesiastes", 12, "AT"], ["Cantares", 8, "AT"], ["Isaías", 66, "AT"], ["Jeremias", 52, "AT"], ["Lamentações", 5, "AT"], ["Ezequiel", 48, "AT"], ["Daniel", 12, "AT"], ["Oseias", 14, "AT"], ["Joel", 3, "AT"], ["Amós", 9, "AT"], ["Obadias", 1, "AT"], ["Jonas", 4, "AT"], ["Miqueias", 7, "AT"], ["Naum", 3, "AT"], ["Habacuque", 3, "AT"], ["Sofonias", 3, "AT"], ["Ageu", 2, "AT"], ["Zacarias", 14, "AT"], ["Malaquias", 4, "AT"], ["Mateus", 28, "NT"], ["Marcos", 16, "NT"], ["Lucas", 24, "NT"], ["João", 21, "NT"], ["Atos", 28, "NT"], ["Romanos", 16, "NT"], ["1 Coríntios", 16, "NT"], ["2 Coríntios", 13, "NT"], ["Gálatas", 6, "NT"], ["Efésios", 6, "NT"], ["Filipenses", 4, "NT"], ["Colossenses", 4, "NT"], ["1 Tessalonicenses", 5, "NT"], ["2 Tessalonicenses", 3, "NT"], ["1 Timóteo", 6, "NT"], ["2 Timóteo", 4, "NT"], ["Tito", 3, "NT"], ["Filemom", 1, "NT"], ["Hebreus", 13, "NT"], ["Tiago", 5, "NT"], ["1 Pedro", 5, "NT"], ["2 Pedro", 3, "NT"], ["1 João", 5, "NT"], ["2 João", 1, "NT"], ["3 João", 1, "NT"], ["Judas", 1, "NT"], ["Apocalipse", 22, "NT"]];
-    function renderBibleBooks(){
-      const at=document.getElementById('oldTestament'),nt=document.getElementById('newTestament');
-      if(!at || !nt) return;
-      at.innerHTML=''; nt.innerHTML='';
-      bibleBooks.forEach((b,i)=>{
-        const el=document.createElement('div');el.className='bible-book';
-        const chapters=Array.from({length:b[1]},(_,c)=>`<button class="chapter-btn" data-book="${b[0]}" data-chapter="${c+1}" onclick="openChapter('${b[0]}',${c+1},event)">${c+1}</button>`).join('');
-        el.innerHTML=`<button class="book-header" onclick="toggleBook(this)"><span class="book-number">${i+1}</span><span class="book-info"><div class="book-name">${b[0]}</div><div class="book-meta">${b[1]} ${b[1]===1?'capítulo':'capítulos'}</div></span><span class="book-chevron">⌄</span></button><div class="book-chapters">${chapters}</div>`;
-        (b[2]==='AT'?at:nt).appendChild(el);
-      });
-      // Recalcula capítulos completos sempre que a lista é reconstruída.
-      requestAnimationFrame(() => updateChapterReadStates());
-    }
-    function toggleBook(btn){
-      const el=btn.closest('.bible-book');
-      const open=el.classList.contains('open');
-
-      // Ao recolher/trocar de livro, fecha também qualquer painel de versículos aberto.
-      document.querySelectorAll('.bible-book').forEach(book=>{
-        book.classList.remove('open');
-        book.querySelectorAll('.chapter-btn.selected-chapter').forEach(ch=>ch.classList.remove('selected-chapter'));
-        book.querySelectorAll('.chapter-verses-panel').forEach(panel=>{
-          panel.classList.remove('show');
-          setTimeout(()=>panel.remove(),360);
-        });
-      });
-
-      if(!open) el.classList.add('open');
-    }
-    function toggleWholeChapter(book,ch,e){
-      e.stopPropagation();
-      const total=chapterVerseCounts[book]?.[ch-1];
-      if(!total || book!=='Gênesis') return;
+    function firstUnreadIndex(){
       const read=getReadVerses();
-      const ids=Array.from({length:total},(_,i)=>`arc-gn-${ch}-${i+1}`);
-      const allRead=ids.every(id=>read.has(id));
-      ids.forEach(id=>allRead?read.delete(id):read.add(id));
-      saveReadVerses(read);
-      restoreReadStates(document);
-      updateChapterReadStates();
-      document.querySelectorAll('.vertical-read[data-verse-id]').forEach(btn=>{
-        const done=read.has(btn.dataset.verseId);btn.classList.toggle('read',done);btn.textContent=done?'✓':'○';
-      });
-      const btn=document.querySelector(`.chapter-btn[data-book="${book}"][data-chapter="${ch}"]`);
-      const panel=btn?.closest('.bible-book')?.querySelector('.chapter-verses-panel');
-      if(panel) panel.remove();
-      if(btn) openChapter(book,ch,{stopPropagation(){},currentTarget:btn});
+      const i=allBibleVerses.findIndex(v=>!read.has(verseId(v)));
+      return i<0?Math.max(0,allBibleVerses.length-1):i;
+    }
+    function findVerseIndex(book,chapter,verse){
+      const normalized=book.toLowerCase();
+      return allBibleVerses.findIndex(v=>v.book.toLowerCase()===normalized && v.chapter===Number(chapter) && v.verse===Number(verse));
     }
 
-    function openChapter(book,ch,e){
-      e.stopPropagation();
-      const btn=e.currentTarget;
-      const bookEl=btn.closest('.bible-book');
-      let panel=bookEl.querySelector('.chapter-verses-panel');
-
-      // Clicar novamente no mesmo capítulo recolhe os versículos.
-      if(panel && panel.dataset.book===book && Number(panel.dataset.chapter)===ch && panel.classList.contains('show')){
-        panel.classList.remove('show');
-        btn.classList.remove('selected-chapter');
-        setTimeout(()=>{ if(!panel.classList.contains('show')) panel.remove(); },360);
-        return;
-      }
-
-      bookEl.querySelectorAll('.chapter-btn').forEach(x=>x.classList.remove('selected-chapter'));
-      btn.classList.add('selected-chapter');
-      if(panel) panel.remove();
-
-      panel=document.createElement('div');
-      panel.className='chapter-verses-panel';
-      panel.dataset.book=book;
-      panel.dataset.chapter=ch;
-
-      const counts=chapterVerseCounts[book];
-      const total=counts && counts[ch-1] ? counts[ch-1] : null;
-
-      if(book==='Gênesis' && total){
-        const read=getReadVerses();
-        const chapterComplete=Array.from({length:total},(_,i)=>read.has(`arc-gn-${ch}-${i+1}`)).every(Boolean);
-        panel.innerHTML=`<div class="chapter-panel-head"><div class="chapter-panel-title">${book} ${ch}</div>
-          <button class="mark-chapter-btn ${chapterComplete?'done':''}" onclick="toggleWholeChapter('${book}',${ch},event)">
-          ${chapterComplete?'✓ Capítulo lido':'✓ Marcar capítulo como lido'}</button></div>`+
-          Array.from({length:total},(_,i)=>{
-            const verse=i+1, id=`arc-gn-${ch}-${verse}`;
-            const done=read.has(id);
-            return `<button class="mini-verse ${done?'mini-read':''}" onclick="askOpenVerse('${book}',${ch},${verse},event)">
-              <span>${verse}</span>
-              <div>Versículo ${verse}${done?' <small>✓ Lida</small>':''}</div>
-            </button>`;
-          }).join('');
-      }else{
-        panel.innerHTML=`<div class="chapter-panel-title">${book} ${ch}</div>
-          <div class="chapter-placeholder">Os versículos deste capítulo serão carregados aqui.</div>`;
-      }
-
-      const chapters=bookEl.querySelector('.book-chapters');
-      chapters.insertAdjacentElement('afterend',panel);
-      requestAnimationFrame(()=>requestAnimationFrame(()=>panel.classList.add('show')));
+    function renderFeedWindow(index){
+      if(!allBibleVerses.length)return;
+      feedWindowStart=Math.max(0,Math.min(index,allBibleVerses.length-1));
+      const list=allBibleVerses.slice(feedWindowStart,feedWindowStart+PAGE_SIZE);
+      bibleFeed.innerHTML='';
+      list.forEach(v=>bibleFeed.appendChild(versePost(v)));
+      restoreReadStates(bibleFeed);
+      const more=document.createElement('div');more.className='feed-end';
+      more.innerHTML=feedWindowStart+PAGE_SIZE<allBibleVerses.length?'<button onclick="loadMoreFeed()" style="border:0;background:transparent;color:inherit">Carregar próximos versículos ↓</button>':'Fim da Bíblia';
+      bibleFeed.appendChild(more);
     }
-    renderBibleBooks();
-    // Os botões dos capítulos já existem neste ponto; restaura o verde ao abrir/recarregar.
-    requestAnimationFrame(() => updateChapterReadStates());
-
-    // Para ~31 mil versículos, localStorage é suficiente e muito leve:
-    // guardamos somente os IDs dos versículos marcados como lidos.
-    const READ_STORAGE_KEY = 'scriptura.readVerses.v1';
-
-    function getReadVerses(){
-      try{
-        return new Set(JSON.parse(localStorage.getItem(READ_STORAGE_KEY) || '[]'));
-      }catch(e){
-        return new Set();
-      }
+    function loadMoreFeed(){
+      const current=Array.from(bibleFeed.querySelectorAll('.post'));
+      const next=allBibleVerses.slice(feedWindowStart+current.length,feedWindowStart+current.length+PAGE_SIZE);
+      const end=bibleFeed.querySelector('.feed-end');if(end)end.remove();
+      next.forEach(v=>bibleFeed.appendChild(versePost(v)));restoreReadStates(bibleFeed);
+      const more=document.createElement('div');more.className='feed-end';more.innerHTML='<button onclick="loadMoreFeed()" style="border:0;background:transparent;color:inherit">Carregar próximos versículos ↓</button>';bibleFeed.appendChild(more);
     }
 
-    function saveReadVerses(readSet){
-      try{
-        localStorage.setItem(READ_STORAGE_KEY, JSON.stringify([...readSet]));
-      }catch(e){
-        console.warn('Não foi possível salvar o progresso localmente.', e);
-      }
-    }
-
-    function applyReadState(btn, isRead){
-      btn.classList.toggle('read', isRead);
-      btn.innerHTML = isRead ? '✓ Lida' : '○ Lida';
-      btn.setAttribute('aria-pressed', isRead ? 'true' : 'false');
-    }
-
-    function toggleRead(btn){
-      const verseId = btn.dataset.verseId;
-      if(!verseId) return;
-
-      const readVerses = getReadVerses();
-      const willBeRead = !readVerses.has(verseId);
-
-      if(willBeRead) readVerses.add(verseId);
-      else readVerses.delete(verseId);
-
-      saveReadVerses(readVerses);
-      applyReadState(btn, willBeRead);
-      updateChapterReadStates();
-    }
-
-    function updateChapterReadStates(){
-      const readVerses = getReadVerses();
-
-      document.querySelectorAll('.chapter-btn[data-book][data-chapter]').forEach(btn=>{
-        const book = btn.dataset.book;
-        const chapter = Number(btn.dataset.chapter);
-        const counts = chapterVerseCounts[book];
-
-        // Só colore quando conhecemos a quantidade real de versículos do capítulo.
-        if(!counts || !counts[chapter-1]){
-          btn.classList.remove('chapter-read');
-          return;
-        }
-
-        const total = counts[chapter-1];
-        let complete = true;
-
-        // Atualmente o feed usa ARC + Gênesis (gn).
-        if(book === 'Gênesis'){
-          for(let verse=1; verse<=total; verse++){
-            if(!readVerses.has(`arc-gn-${chapter}-${verse}`)){
-              complete = false;
-              break;
-            }
-          }
-        }else{
-          complete = false;
-        }
-
-        btn.classList.toggle('chapter-read', complete);
-        btn.title = complete ? 'Capítulo lido' : '';
-      });
-    }
-
-    function scrollToFirstUnread(verses){
-      const readVerses = getReadVerses();
-      const firstUnread = verses.find(v => !readVerses.has(`arc-gn-${v.chapter}-${v.verse}`));
-
-      if(!firstUnread) return;
-
-      const id = `verse-arc-gn-${firstUnread.chapter}-${firstUnread.verse}`;
-      const target = document.getElementById(id);
-
-      if(target){
-        // Aguarda o navegador terminar o layout dos posts antes de posicionar.
-        requestAnimationFrame(()=>{
-          requestAnimationFrame(()=>{
-            target.scrollIntoView({behavior:'auto', block:'start'});
-          });
-        });
-      }
-    }
-
-    function restoreReadStates(root=document){
-      const readVerses = getReadVerses();
-      root.querySelectorAll('.read-btn[data-verse-id]').forEach(btn=>{
-        applyReadState(btn, readVerses.has(btn.dataset.verseId));
-      });
-    }
-
-
-    let selectedVerse = null;
-    let explicitVerseNavigation = false;
-
-    function askOpenVerse(book, chapter, verse, event){
-      if(event) event.stopPropagation();
-      selectedVerse = {book, chapter, verse};
-      document.getElementById('verseModalTitle').textContent = `${book} ${chapter}:${verse}`;
-      requestAnimationFrame(()=>document.getElementById('verseOpenModal').classList.add('show'));
-    }
-
-    function closeVerseModal(event){
-      if(event && event.target !== document.getElementById('verseOpenModal')) return;
-      document.getElementById('verseOpenModal').classList.remove('show');
-    }
-
-    function openSelectedVerse(mode){
-      if(!selectedVerse) return;
-      const verse = selectedVerse;
-      closeVerseModal();
-
-      if(mode === 'feed'){
-        explicitVerseNavigation = true;
-        showView('feed');
-        if(verse.book === 'Gênesis'){
-          setTimeout(()=>{
-            const target=document.getElementById(`verse-arc-gn-${verse.chapter}-${verse.verse}`);
-            if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
-          },120);
-        }
-      }else{
-        explicitVerseNavigation = true;
-        showView('vertical');
-        // Mantém a referência selecionada disponível para a próxima evolução
-        // do modo vertical dinâmico.
-        const vertical = document.getElementById('vertical');
-        vertical.dataset.selectedBook = verse.book;
-        vertical.dataset.selectedChapter = verse.chapter;
-        vertical.dataset.selectedVerse = verse.verse;
-        if(verse.book === 'Gênesis'){
-          setTimeout(()=>scrollVerticalToVerse(verse.chapter,verse.verse),120);
-        }
-      }
-    }
-
-
-    let loadedGenesisVerses = [];
-
-    function renderVerticalGenesis(verses){
-      loadedGenesisVerses = verses;
-      const box=document.getElementById('verticalFeed');
-      if(!box) return;
-      const read=getReadVerses();
+    function renderVerticalWindow(index){
+      const box=document.getElementById('verticalFeed');if(!box||!allBibleVerses.length)return;
+      verticalWindowStart=Math.max(0,Math.min(index,allBibleVerses.length-1));
+      const read=getReadVerses(),list=allBibleVerses.slice(verticalWindowStart,verticalWindowStart+PAGE_SIZE);
       box.innerHTML='';
-
-      verses.forEach(v=>{
-        const id=`arc-gn-${v.chapter}-${v.verse}`;
-        const done=read.has(id);
-        const reel=document.createElement('article');
-        reel.className='reel';
-        reel.id=`vertical-arc-gn-${v.chapter}-${v.verse}`;
-        reel.innerHTML=`
-          <div class="reel-content">
-            <div class="reel-ref">GÊNESIS ${v.chapter}:${v.verse}</div>
-            <p class="verse">“${escapeHtml(v.text)}”</p>
-            <div class="reel-user">@genesis <span>◆ Escritura</span></div>
-            <div class="reel-progress">Almeida Revista e Corrigida</div>
-          </div>
-          <div class="reel-actions">
-            <button onclick="like(this)">♡</button>
-            <button class="vertical-read ${done?'read':''}" data-verse-id="${id}" onclick="toggleVerticalRead(this)">${done?'✓':'○'}</button>
-            <button>↗</button>
-          </div>`;
+      list.forEach(v=>{
+        const id=verseId(v),done=read.has(id),reel=document.createElement('article');reel.className='reel';reel.id=`vertical-${id}`;
+        reel.innerHTML=`<div class="reel-content"><div class="reel-ref">${v.book.toUpperCase()} ${v.chapter}:${v.verse}</div>
+        <p class="verse">“${escapeHtml(v.text)}”</p><div class="reel-user">@${v.slug} <span>◆ Escritura</span></div>
+        <div class="reel-progress">Almeida Revista e Corrigida</div></div>
+        <div class="reel-actions"><button onclick="like(this)">♡</button>
+        <button class="vertical-read ${done?'read':''}" data-verse-id="${id}" onclick="toggleVerticalRead(this)">${done?'✓':'○'}</button><button>↗</button></div>`;
         box.appendChild(reel);
       });
     }
-
     function toggleVerticalRead(btn){
-      const id=btn.dataset.verseId;
-      const set=getReadVerses();
-      const done=!set.has(id);
-      if(done) set.add(id); else set.delete(id);
-      saveReadVerses(set);
-      btn.classList.toggle('read',done);
-      btn.textContent=done?'✓':'○';
-
-      // Sincroniza imediatamente com o mesmo versículo no Feed.
-      const feedBtn=document.querySelector(`.read-btn[data-verse-id="${id}"]`);
-      if(feedBtn) applyReadState(feedBtn,done);
-      updateChapterReadStates();
+      const id=btn.dataset.verseId,set=getReadVerses(),done=!set.has(id);done?set.add(id):set.delete(id);saveReadVerses(set);
+      btn.classList.toggle('read',done);btn.textContent=done?'✓':'○';updateChapterReadStates();
     }
 
-    function scrollVerticalToVerse(chapter,verse){
-      const target=document.getElementById(`vertical-arc-gn-${chapter}-${verse}`);
-      if(target) requestAnimationFrame(()=>target.scrollIntoView({behavior:'auto',block:'start'}));
+    function goToVerse(book,chapter,verse,mode){
+      const i=findVerseIndex(book,chapter,verse);if(i<0)return;
+      explicitVerseNavigation=true;
+      if(mode==='feed'){renderFeedWindow(i);showView('feed')}
+      else{renderVerticalWindow(i);showView('vertical')}
     }
 
-    loadGenesis();
+    function scrollToFirstUnread(){renderFeedWindow(firstUnreadIndex())}
+    function scrollVerticalToFirstUnread(){renderVerticalWindow(firstUnreadIndex())}
+
+    function updateChapterReadStates(){
+      const read=getReadVerses();
+      document.querySelectorAll('.chapter-btn[data-book][data-chapter]').forEach(btn=>{
+        const book=btn.dataset.book,ch=Number(btn.dataset.chapter);
+        const verses=allBibleVerses.filter(v=>v.book===book&&v.chapter===ch);
+        const complete=verses.length>0&&verses.every(v=>read.has(verseId(v)));
+        btn.classList.toggle('chapter-read',complete);btn.title=complete?'Capítulo lido':'';
+      });
+    }
+
+    function toggleWholeChapter(book,ch,e){
+      e.stopPropagation();
+      const verses=allBibleVerses.filter(v=>v.book===book&&v.chapter===Number(ch));if(!verses.length)return;
+      const read=getReadVerses(),all=verses.every(v=>read.has(verseId(v)));
+      verses.forEach(v=>all?read.delete(verseId(v)):read.add(verseId(v)));saveReadVerses(read);updateChapterReadStates();
+      const btn=document.querySelector(`.chapter-btn[data-book="${book}"][data-chapter="${ch}"]`);
+      const panel=btn?.closest('.bible-book')?.querySelector('.chapter-verses-panel');if(panel)panel.remove();
+      if(btn)openChapter(book,ch,{stopPropagation(){},currentTarget:btn});
+    }
+
+    function openChapter(book,ch,e){
+      e.stopPropagation();const btn=e.currentTarget,bookEl=btn.closest('.bible-book');let panel=bookEl.querySelector('.chapter-verses-panel');
+      if(panel&&panel.dataset.book===book&&Number(panel.dataset.chapter)===ch&&panel.classList.contains('show')){panel.classList.remove('show');btn.classList.remove('selected-chapter');setTimeout(()=>panel.remove(),360);return}
+      bookEl.querySelectorAll('.chapter-btn').forEach(x=>x.classList.remove('selected-chapter'));btn.classList.add('selected-chapter');if(panel)panel.remove();
+      panel=document.createElement('div');panel.className='chapter-verses-panel';panel.dataset.book=book;panel.dataset.chapter=ch;
+      const verses=allBibleVerses.filter(v=>v.book===book&&v.chapter===Number(ch)),read=getReadVerses(),complete=verses.length&&verses.every(v=>read.has(verseId(v)));
+      panel.innerHTML=`<div class="chapter-panel-head"><div class="chapter-panel-title">${book} ${ch}</div>
+      <button class="mark-chapter-btn ${complete?'done':''}" onclick="toggleWholeChapter('${book}',${ch},event)">${complete?'✓ Capítulo lido':'✓ Marcar capítulo como lido'}</button></div>`+
+      verses.map(v=>`<button class="mini-verse ${read.has(verseId(v))?'mini-read':''}" onclick="askOpenVerse('${book}',${ch},${v.verse},event)">
+      <span>${v.verse}</span><div>${escapeHtml(v.text)}${read.has(verseId(v))?' <small>✓ Lida</small>':''}</div></button>`).join('');
+      bookEl.querySelector('.book-chapters').insertAdjacentElement('afterend',panel);requestAnimationFrame(()=>requestAnimationFrame(()=>panel.classList.add('show')));
+    }
+
+    async function loadBible(){
+      const localWarning=location.protocol==='file:'?'<span style="font-size:12px;max-width:390px;margin-top:6px">Aberto como arquivo local; alguns navegadores podem bloquear a fonte externa.</span>':'';
+      bibleFeed.innerHTML='<div class="feed-status"><div class="feed-spinner"></div><strong>Carregando a Bíblia...</strong><span>Isso acontece uma vez nesta abertura.</span>'+localWarning+'</div>';
+      try{
+        const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
+        let response;try{response=await fetch(BIBLE_URL,{signal:controller.signal,cache:'force-cache'})}finally{clearTimeout(timeout)}
+        if(!response.ok)throw new Error('HTTP '+response.status);
+        allBibleVerses=normalizeBible(await response.json());
+        if(!allBibleVerses.length)throw new Error('Formato não reconhecido');
+        loadedGenesisVerses=allBibleVerses; // compatibilidade
+        renderFeedWindow(firstUnreadIndex());renderVerticalWindow(firstUnreadIndex());updateChapterReadStates();
+      }catch(err){
+        console.error(err);bibleFeed.innerHTML=`<div class="api-error"><b>Não foi possível carregar a Bíblia.</b>
+        ${err?.name==='AbortError'?'A requisição excedeu 15 segundos.':'Verifique a conexão e tente novamente.'}<br>
+        <button onclick="loadBible()">Tentar novamente</button></div>`;
+        const vertical=document.getElementById('verticalFeed');if(vertical)vertical.innerHTML=bibleFeed.innerHTML;
+      }
+    }
+
+    // Modal / navegação
+    function askOpenVerse(book,chapter,verse,event){if(event)event.stopPropagation();selectedVerse={book,chapter,verse};document.getElementById('verseModalTitle').textContent=`${book} ${chapter}:${verse}`;requestAnimationFrame(()=>document.getElementById('verseOpenModal').classList.add('show'))}
+    function closeVerseModal(event){if(event&&event.target!==document.getElementById('verseOpenModal'))return;document.getElementById('verseOpenModal').classList.remove('show')}
+    function openSelectedVerse(mode){if(!selectedVerse)return;const v=selectedVerse;closeVerseModal();goToVerse(v.book,v.chapter,v.verse,mode)}
+
+    loadBible();
 </script>
 
 <div id="verseOpenModal" class="verse-modal-backdrop" onclick="closeVerseModal(event)">
