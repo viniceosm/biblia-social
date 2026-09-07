@@ -395,6 +395,64 @@
     let explicitVerseNavigation = false;
     let selectedVerse = null;
 
+
+    function renderBibleBooks(){
+      const at=document.getElementById('oldTestament');
+      const nt=document.getElementById('newTestament');
+      if(!at || !nt) return;
+
+      at.innerHTML='';
+      nt.innerHTML='';
+
+      bookMeta.forEach((b,index)=>{
+        const [name,slug,chapters]=b;
+        const testament=index<39?'AT':'NT';
+        const el=document.createElement('div');
+        el.className='bible-book';
+
+        const chapterButtons=Array.from({length:chapters},(_,i)=>`
+          <button class="chapter-btn"
+            data-book="${name}"
+            data-chapter="${i+1}"
+            onclick="openChapter('${name}',${i+1},event)">
+            ${i+1}
+          </button>
+        `).join('');
+
+        el.innerHTML=`
+          <button class="book-header" onclick="toggleBook(this)">
+            <span class="book-number">${index+1}</span>
+            <span class="book-info">
+              <div class="book-name">${name}</div>
+              <div class="book-meta">${chapters} ${chapters===1?'capítulo':'capítulos'}</div>
+            </span>
+            <span class="book-chevron">⌄</span>
+          </button>
+          <div class="book-chapters">${chapterButtons}</div>
+        `;
+
+        (testament==='AT'?at:nt).appendChild(el);
+      });
+
+      requestAnimationFrame(()=>updateChapterReadStates());
+    }
+
+    function toggleBook(btn){
+      const el=btn.closest('.bible-book');
+      const open=el.classList.contains('open');
+
+      document.querySelectorAll('.bible-book').forEach(book=>{
+        book.classList.remove('open');
+        book.querySelectorAll('.chapter-btn.selected-chapter').forEach(ch=>ch.classList.remove('selected-chapter'));
+        book.querySelectorAll('.chapter-verses-panel').forEach(panel=>{
+          panel.classList.remove('show');
+          setTimeout(()=>panel.remove(),360);
+        });
+      });
+
+      if(!open) el.classList.add('open');
+    }
+
     function normalizeBible(data){
       const out = [];
       const books = Array.isArray(data) ? data : (data.books || data.book || []);
@@ -570,6 +628,7 @@
     function closeVerseModal(event){if(event&&event.target!==document.getElementById('verseOpenModal'))return;document.getElementById('verseOpenModal').classList.remove('show')}
     function openSelectedVerse(mode){if(!selectedVerse)return;const v=selectedVerse;closeVerseModal();goToVerse(v.book,v.chapter,v.verse,mode)}
 
+    renderBibleBooks();
     loadBible();
 </script>
 
