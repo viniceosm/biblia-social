@@ -53,6 +53,7 @@
     .result{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid var(--line)}
     .result:last-child{border-bottom:0}
     .result:hover{background:var(--panel2)}
+    .search-action{width:100%;border:0;color:var(--text);text-align:left;background:transparent}
     .avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#352814,#16191e);border:1px solid #4a3a20;color:var(--accent2);font-weight:900}
     .result .meta{min-width:0}
     .result .title{font-weight:800}
@@ -334,19 +335,151 @@
       window.scrollTo({top:0,behavior:'smooth'});
     }
 
-    search.addEventListener('input', () => {
-      const q = search.value.trim().toLowerCase();
-      if(!q){ results.classList.remove('show'); results.innerHTML=''; return; }
+    function normalizeText(value){
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g,'')
+        .toLowerCase()
+        .trim();
+    }
 
-      if(/^([a-zà-ú]+)\s+\d+:\d+$/i.test(q)){
-        results.innerHTML = `<div class="result"><div class="avatar">📖</div><div class="meta"><div class="title">${search.value}</div><div class="sub">Ir diretamente para esta passagem</div></div></div>`;
-        results.classList.add('show'); return;
+    function findBookMetaByQuery(query){
+      const q=normalizeText(query);
+      return bookMeta.find(([name,slug])=>{
+        const n=normalizeText(name);
+        return n===q || n.startsWith(q) || normalizeText(slug)===q;
+      });
+    }
+
+    function parseReference(query){
+      const clean=query.trim();
+      let m=clean.match(/^(.+?)\s+(\d+)\s*:\s*(\d+)$/);
+      if(m) return {type:'verse',book:m[1].trim(),chapter:Number(m[2]),verse:Number(m[3])};
+
+      m=clean.match(/^(.+?)\s+(\d+)$/);
+      if(m) return {type:'chapter',book:m[1].trim(),chapter:Number(m[2])};
+
+      return null;
+    }
+
+    function openSearchBook(bookName){
+      showView('bible');
+      setTimeout(()=>{
+        const btn=[...document.querySelectorAll('.book-header')].find(b=>
+          normalizeText(b.querySelector('.book-name')?.textContent)===normalizeText(bookName)
+        );
+        if(btn){
+          const book=btn.closest('.bible-book');
+          if(!book.classList.contains('open')) toggleBook(btn);
+          btn.scrollIntoView({behavior:'smooth',block:'center'});
+        }
+      },80);
+      results.classList.remove('show');
+      search.blur();
+    }
+
+    function openSearchChapter(bookName,chapter){
+      showView('bible');
+      setTimeout(()=>{
+        const header=[...document.querySelectorAll('.book-header')].find(b=>
+          normalizeText(b.querySelector('.book-name')?.textContent)===normalizeText(bookName)
+        );
+        if(!header) return;
+        const book=header.closest('.bible-book');
+        if(!book.classList.contains('open')) toggleBook(header);
+
+        setTimeout(()=>{
+          const ch=book.querySelector(`.chapter-btn[data-chapter="${chapter}"]`);
+          if(ch){
+            ch.scrollIntoView({behavior:'smooth',block:'center'});
+            ch.click();
+          }
+        },120);
+      },80);
+      results.classList.remove('show');
+      search.blur();
+    }
+
+    function openSearchVerse(bookName,chapter,verse){
+      if(!allBibleVerses.length){
+        results.innerHTML='<div class="result"><div class="meta"><div class="title">Bíblia ainda carregando</div><div class="sub">Aguarde alguns segundos e tente novamente.</div></div></div>';
+        results.classList.add('show');
+        return;
       }
 
-      const filtered = accounts.filter(a => (a.name+' '+a.handle+' '+a.type).toLowerCase().includes(q)).slice(0,5);
-      results.innerHTML = filtered.length
-        ? filtered.map(a => `<div class="result"><div class="avatar">${a.icon}</div><div class="meta"><div class="title">${a.name} <span class="verified">${a.type.startsWith('Livro')?'◆':''}</span></div><div class="sub">${a.handle} · ${a.type}</div></div></div>`).join('')
-        : `<div class="result"><div class="meta"><div class="title">Nenhum resultado</div><div class="sub">Tente buscar por um livro, personagem ou passagem.</div></div></div>`;
+      const idx=findVerseIndex(bookName,chapter,verse);
+      if(idx<0){
+        results.innerHTML='<div class="result"><div class="meta"><div class="title">Versículo não encontrado</div><div class="sub">Confira o livro, capítulo e versículo.</div></div></div>';
+        results.classList.add('show');
+        return;
+      }
+
+      askOpenVerse(bookName,chapter,verse);
+      results.classList.remove('show');
+      search.blur();
+    }
+
+    search.addEventListener('input', () => {
+      const raw=search.value.trim();
+      const q=normalizeText(raw);
+
+      if(!q){
+        results.classList.remove('show');
+        results.innerHTML='';
+        return;
+      }
+
+      const ref=parseReference(raw);
+      if(ref){
+        const meta=findBookMetaByQuery(ref.book);
+
+        if(meta){
+          const [name,slug,chapters]=meta;
+
+          if(ref.type==='verse'){
+            if(ref.chapter<1 || ref.chapter>chapters){
+              results.innerHTML=`<div class="result"><div class="meta"><div class="title">Capítulo inválido</div><div class="sub">${name} possui ${chapters} capítulos.</div></div></div>`;
+            }else{
+              results.innerHTML=`<button class="result search-action" onclick="openSearchVerse('${name.replace(/'/g,"\\'")}',${ref.chapter},${ref.verse})">
+                <div class="avatar">📖</div>
+                <div class="meta"><div class="title">${name} ${ref.chapter}:${ref.verse}</div><div class="sub">Abrir versículo</div></div>
+              </button>`;
+            }
+            results.classList.add('show');
+            return;
+          }
+
+          if(ref.type==='chapter'){
+            if(ref.chapter<1 || ref.chapter>chapters){
+              results.innerHTML=`<div class="result"><div class="meta"><div class="title">Capítulo inválido</div><div class="sub">${name} possui ${chapters} capítulos.</div></div></div>`;
+            }else{
+              results.innerHTML=`<button class="result search-action" onclick="openSearchChapter('${name.replace(/'/g,"\\'")}',${ref.chapter})">
+                <div class="avatar">${slug.slice(0,2).toUpperCase()}</div>
+                <div class="meta"><div class="title">${name} ${ref.chapter}</div><div class="sub">Abrir capítulo na Bíblia</div></div>
+              </button>`;
+            }
+            results.classList.add('show');
+            return;
+          }
+        }
+      }
+
+      const matches=bookMeta
+        .map((b,i)=>({name:b[0],slug:b[1],chapters:b[2],index:i}))
+        .filter(b=>normalizeText(b.name).includes(q) || normalizeText(b.slug).includes(q))
+        .slice(0,8);
+
+      results.innerHTML=matches.length
+        ? matches.map(b=>`
+          <button class="result search-action" onclick="openSearchBook('${b.name.replace(/'/g,"\\'")}')">
+            <div class="avatar">${b.slug.slice(0,2).toUpperCase()}</div>
+            <div class="meta">
+              <div class="title">${b.name}</div>
+              <div class="sub">${b.index<39?'Antigo Testamento':'Novo Testamento'} · ${b.chapters} ${b.chapters===1?'capítulo':'capítulos'}</div>
+            </div>
+          </button>`).join('')
+        : `<div class="result"><div class="meta"><div class="title">Nenhum resultado</div><div class="sub">Tente “João”, “Gênesis 1” ou “João 3:16”.</div></div></div>`;
+
       results.classList.add('show');
     });
 
