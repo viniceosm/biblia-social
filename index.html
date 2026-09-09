@@ -167,7 +167,7 @@
     .verse-modal{width:min(430px,100%);background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 25px 70px rgba(0,0,0,.5);transform:translateY(25px);transition:transform .25s ease}
     .verse-modal-backdrop.show .verse-modal{transform:translateY(0)}
     .verse-modal h3{margin:0 0 5px;font-family:Georgia,serif;font-size:23px}.verse-modal p{margin:0 0 18px;color:var(--muted);font-size:14px}
-    .verse-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.verse-modal-actions button{border:1px solid var(--line);border-radius:13px;padding:14px 10px;background:var(--panel2);color:var(--text);font-weight:800}
+    .verse-modal-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.verse-modal-actions button{border:1px solid var(--line);border-radius:13px;padding:14px 10px;background:var(--panel2);color:var(--text);font-weight:800}
     .verse-modal-actions button:hover{color:var(--accent2);border-color:#6d5730}.verse-modal-cancel{width:100%;margin-top:9px;border:0;background:transparent;color:var(--muted);padding:9px}
 
 
@@ -744,8 +744,13 @@
     function goToVerse(book,chapter,verse,mode){
       const i=findVerseIndex(book,chapter,verse);if(i<0)return;
       explicitVerseNavigation=true;
-      if(mode==='feed'){renderFeedWindow(i);showView('feed')}
-      else{renderVerticalWindow(i);showView('vertical')}
+      if(mode==='feed'){
+        renderFeedWindow(i);showView('feed');
+      }else if(mode==='vertical'){
+        renderVerticalWindow(i);showView('vertical');
+      }else if(mode==='reader'){
+        renderReaderWindow(i);showView('reader');
+      }
     }
 
     function scrollToFirstUnread(){renderFeedWindow(firstUnreadIndex())}
@@ -819,6 +824,7 @@
     <div class="verse-modal-actions">
       <button onclick="openSelectedVerse('feed')">▦ &nbsp; Feed</button>
       <button onclick="openSelectedVerse('vertical')">▶ &nbsp; Vertical</button>
+      <button onclick="openSelectedVerse('reader')">≡ &nbsp; Leitura</button>
     </div>
     <button class="verse-modal-cancel" onclick="closeVerseModal()">Cancelar</button>
   </div>
