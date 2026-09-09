@@ -121,7 +121,8 @@
     .reader-text{font-family:Georgia,"Times New Roman",serif;font-size:20px;line-height:1.85;color:#ddd9d1}
     .reader-verse{display:inline}
     .reader-number{font-family:system-ui,sans-serif;font-size:11px;vertical-align:super;color:var(--accent2);font-weight:850;margin-right:3px}
-    .reader-next{display:block;margin:28px auto 0;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:11px 18px;border-radius:999px;font-weight:750}
+    .reader-nav{display:flex;justify-content:space-between;gap:10px;margin-top:28px}
+    .reader-next{display:block;margin:0;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:11px 16px;border-radius:999px;font-weight:750}
     .bible{padding:20px 20px 115px}
     .bible-heading h2{font-family:Georgia,serif;font-size:30px;margin:0 0 5px}.bible-heading p{margin:0;color:var(--muted);font-size:14px}
     .testament-title{margin:26px 0 9px;color:var(--accent2);font-size:12px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
@@ -704,12 +705,37 @@
       box.innerHTML=`<h2 class="reader-book">${first.book}</h2>
         <div class="reader-chapter">Capítulo ${first.chapter}</div>
         <div class="reader-text">${chapterVerses.map(v=>`<span class="reader-verse" id="reader-${verseId(v)}"><sup class="reader-number">${v.verse}</sup>${escapeHtml(v.text)} </span>`).join('')}</div>
-        <button class="reader-next" onclick="nextReaderChapter()">Próximo capítulo →</button>`;
+        <div class="reader-nav">
+          <button class="reader-next" onclick="previousReaderChapter()">← Capítulo anterior</button>
+          <button class="reader-next" onclick="nextReaderChapter()">Próximo capítulo →</button>
+        </div>`;
 
       requestAnimationFrame(()=>{
         const target=document.getElementById(`reader-${verseId(first)}`);
         if(target) target.scrollIntoView({behavior:'auto',block:'center'});
       });
+    }
+
+    function previousReaderChapter(){
+      if(!allBibleVerses.length) return;
+      const current=allBibleVerses[readerWindowStart];
+      let previous=-1;
+
+      for(let i=readerWindowStart-1;i>=0;i--){
+        const v=allBibleVerses[i];
+        if(v.book!==current.book || v.chapter!==current.chapter){
+          previous=i;
+          break;
+        }
+      }
+
+      if(previous<0) return;
+
+      const target=allBibleVerses[previous];
+      const chapterStart=allBibleVerses.findIndex(v=>
+        v.book===target.book && v.chapter===target.chapter
+      );
+      if(chapterStart>=0) renderReaderWindow(chapterStart);
     }
 
     function nextReaderChapter(){
