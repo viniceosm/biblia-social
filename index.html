@@ -661,7 +661,7 @@
         <div class="verse-art-ref">${v.book} ${v.chapter}:${v.verse}</div>
         <div class="verse-art-version">ALMEIDA REVISTA E CORRIGIDA</div></div></div>
         <div class="actions"><button onclick="like(this)">♡</button><button>◌</button>
-        <button class="read-btn" data-verse-id="${verseId(v)}" onclick="toggleRead(this)">○ Lida</button><button>↗</button></div>`;
+        <button class="read-btn" data-verse-id="${verseId(v)}" onclick="toggleRead(this)">○ Lida</button><button onclick="shareVerse('${verseId(v)}',event)" aria-label="Compartilhar versículo">↗</button></div>`;
       return article;
     }
 
@@ -757,7 +757,7 @@
         <p class="verse">“${escapeHtml(v.text)}”</p><div class="reel-user">@${v.slug} <span>◆ Escritura</span></div>
         <div class="reel-progress">Almeida Revista e Corrigida</div></div>
         <div class="reel-actions"><button onclick="like(this)">♡</button>
-        <button class="vertical-read ${done?'read':''}" data-verse-id="${id}" onclick="toggleVerticalRead(this)">${done?'✓':'○'}</button><button>↗</button></div>`;
+        <button class="vertical-read ${done?'read':''}" data-verse-id="${id}" onclick="toggleVerticalRead(this)">${done?'✓':'○'}</button><button onclick="shareVerse('${id}',event)" aria-label="Compartilhar versículo">↗</button></div>`;
         box.appendChild(reel);
       });
     }
@@ -814,6 +814,71 @@
       bookEl.querySelector('.book-chapters').insertAdjacentElement('afterend',panel);requestAnimationFrame(()=>requestAnimationFrame(()=>panel.classList.add('show')));
     }
 
+    function findVerseById(id){
+      return allBibleVerses.find(v=>verseId(v)===id);
+    }
+
+    function verseShareUrl(v){
+      // Rota via query string, compatível com hospedagem estática/GitHub Pages.
+      const url=new URL(window.location.href);
+      url.search='';
+      url.hash='';
+      url.searchParams.set('v',`${v.slug}-${v.chapter}-${v.verse}`);
+      return url.toString();
+    }
+
+    async function shareVerse(id,event){
+      if(event) event.stopPropagation();
+      const v=findVerseById(id);
+      if(!v) return;
+
+      const url=verseShareUrl(v);
+      const title=`${v.book} ${v.chapter}:${v.verse}`;
+      const text=`${title} — “${v.text}”`;
+
+      try{
+        if(navigator.share){
+          await navigator.share({title,text,url});
+        }else if(navigator.clipboard){
+          await navigator.clipboard.writeText(`${text}\n${url}`);
+          alert('Link do versículo copiado!');
+        }else{
+          prompt('Copie o link do versículo:',url);
+        }
+      }catch(err){
+        // AbortError significa apenas que o usuário fechou a tela de compartilhamento.
+        if(err?.name!=='AbortError') console.warn('Não foi possível compartilhar.',err);
+      }
+    }
+
+    function sharedVerseFromUrl(){
+      const raw=new URLSearchParams(window.location.search).get('v');
+      if(!raw) return null;
+      const m=raw.match(/^(.+)-(\d+)-(\d+)$/);
+      if(!m) return null;
+      const slug=m[1].toLowerCase(),chapter=Number(m[2]),verse=Number(m[3]);
+      return allBibleVerses.find(v=>v.slug===slug&&v.chapter===chapter&&v.verse===verse) || null;
+    }
+
+    function openSharedVerseIfPresent(){
+      const v=sharedVerseFromUrl();
+      if(!v) return false;
+
+      // Link compartilhado abre diretamente no Feed, no versículo exato.
+      const index=allBibleVerses.indexOf(v);
+      if(index<0) return false;
+      explicitVerseNavigation=true;
+      renderFeedWindow(index);
+      showView('feed');
+
+      // Mantém a URL compartilhável no navegador.
+      requestAnimationFrame(()=>{
+        const target=document.getElementById(`verse-${verseId(v)}`);
+        if(target) target.scrollIntoView({behavior:'auto',block:'start'});
+      });
+      return true;
+    }
+
     async function loadBible(){
       const localWarning=location.protocol==='file:'?'<span style="font-size:12px;max-width:390px;margin-top:6px">Aberto como arquivo local; alguns navegadores podem bloquear a fonte externa.</span>':'';
       bibleFeed.innerHTML='<div class="feed-status"><div class="feed-spinner"></div><strong>Carregando a Bíblia...</strong><span>Isso acontece uma vez nesta abertura.</span>'+localWarning+'</div>';
@@ -824,7 +889,11 @@
         allBibleVerses=normalizeBible(await response.json());
         if(!allBibleVerses.length)throw new Error('Formato não reconhecido');
         loadedGenesisVerses=allBibleVerses; // compatibilidade
-        renderFeedWindow(firstUnreadIndex());renderVerticalWindow(firstUnreadIndex());renderReaderWindow(firstUnreadIndex());updateChapterReadStates();
+        const sharedOpened=openSharedVerseIfPresent();
+        if(!sharedOpened) renderFeedWindow(firstUnreadIndex());
+        renderVerticalWindow(firstUnreadIndex());
+        renderReaderWindow(firstUnreadIndex());
+        updateChapterReadStates();
       }catch(err){
         console.error(err);bibleFeed.innerHTML=`<div class="api-error"><b>Não foi possível carregar a Bíblia.</b>
         ${err?.name==='AbortError'?'A requisição excedeu 15 segundos.':'Verifique a conexão e tente novamente.'}<br>
