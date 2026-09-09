@@ -41,7 +41,7 @@
     .compose{margin-top:20px;width:100%;border:0;border-radius:999px;padding:13px;background:var(--accent);color:#17110a;font-weight:800}
     main{border-left:1px solid var(--line);border-right:1px solid var(--line);min-height:100vh}
     .topbar{position:sticky;top:0;z-index:20;background:rgba(11,13,16,.88);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:15px}
-    .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--panel);padding:5px;border-radius:14px}
+    .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--panel);padding:5px;border-radius:14px}
     .tabs button{border:0;background:transparent;color:var(--muted);padding:10px;border-radius:10px;font-weight:750}
     .tabs button.active{background:var(--panel2);color:var(--text);box-shadow:0 4px 20px rgba(0,0,0,.2)}
     .searchbox{margin-top:12px;position:relative}
@@ -115,6 +115,13 @@
     .reel-actions .vertical-read.read{color:#8ff0b9;border-color:#5cb77f}
     .reel-user{margin-top:18px;font-weight:800}.reel-user span{color:var(--accent2);font-size:12px;margin-left:4px}
 
+    .normal-reader{padding:24px 22px 115px;max-width:760px;margin:auto}
+    .reader-book{font-family:Georgia,serif;font-size:30px;margin:5px 0 4px}
+    .reader-chapter{font-size:13px;color:var(--accent2);font-weight:800;margin-bottom:20px;text-transform:uppercase;letter-spacing:.08em}
+    .reader-text{font-family:Georgia,"Times New Roman",serif;font-size:21px;line-height:1.8;color:var(--text)}
+    .reader-verse{display:inline}
+    .reader-number{font-family:system-ui,sans-serif;font-size:11px;vertical-align:super;color:var(--accent2);font-weight:850;margin-right:3px}
+    .reader-next{display:block;margin:28px auto 0;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:11px 18px;border-radius:999px;font-weight:750}
     .bible{padding:20px 20px 115px}
     .bible-heading h2{font-family:Georgia,serif;font-size:30px;margin:0 0 5px}.bible-heading p{margin:0;color:var(--muted);font-size:14px}
     .testament-title{margin:26px 0 9px;color:var(--accent2);font-size:12px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
@@ -182,7 +189,7 @@
     .mobilebar{display:none}
     .mode-bottom-bar{
       position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;
-      width:min(560px,calc(100% - 32px));display:grid;grid-template-columns:repeat(3,1fr);
+      width:min(560px,calc(100% - 32px));display:grid;grid-template-columns:repeat(4,1fr);
       gap:5px;padding:6px;background:rgba(17,21,26,.94);backdrop-filter:blur(18px);
       border:1px solid var(--line);border-radius:18px;box-shadow:0 14px 45px rgba(0,0,0,.38)
     }
@@ -256,6 +263,12 @@
         </div>
       </section>
 
+      <section id="reader" class="view">
+        <div class="normal-reader">
+          <div id="normalReader"></div>
+        </div>
+      </section>
+
       <section id="bible" class="view">
         <div class="bible">
           <div class="bible-heading"><h2>Bíblia</h2><p>66 livros • toque em um livro para ver seus capítulos</p></div>
@@ -288,6 +301,10 @@
     <button class="mode-tab" data-view="vertical" onclick="showView('vertical')">
       <span class="mode-icon">▶</span>
       <span>Vertical</span>
+    </button>
+    <button class="mode-tab" data-view="reader" onclick="showView('reader')">
+      <span class="mode-icon">≡</span>
+      <span>Leitura</span>
     </button>
     <button class="mode-tab" data-view="bible" onclick="showView('bible')">
       <span class="mode-icon">▤</span>
@@ -325,6 +342,8 @@
         scrollToFirstUnread();
       }else if(id==='vertical' && allBibleVerses.length){
         scrollVerticalToFirstUnread();
+      }else if(id==='reader' && allBibleVerses.length){
+        scrollReaderToFirstUnread();
       }else{
         window.scrollTo({top:0,behavior:'smooth'});
       }
@@ -525,6 +544,7 @@
     let loadedGenesisVerses = []; // compatibilidade com funções anteriores
     let feedWindowStart = 0;
     let verticalWindowStart = 0;
+    let readerWindowStart = 0;
     let explicitVerseNavigation = false;
     let selectedVerse = null;
 
@@ -674,6 +694,33 @@
       const more=document.createElement('div');more.className='feed-end';more.innerHTML='<button onclick="loadMoreFeed()" style="border:0;background:transparent;color:inherit">Carregar próximos versículos ↓</button>';bibleFeed.appendChild(more);
     }
 
+    function renderReaderWindow(index){
+      const box=document.getElementById('normalReader');
+      if(!box || !allBibleVerses.length) return;
+      readerWindowStart=Math.max(0,Math.min(index,allBibleVerses.length-1));
+      const first=allBibleVerses[readerWindowStart];
+      const chapterVerses=allBibleVerses.filter(v=>v.book===first.book && v.chapter===first.chapter);
+
+      box.innerHTML=`<h2 class="reader-book">${first.book}</h2>
+        <div class="reader-chapter">Capítulo ${first.chapter}</div>
+        <div class="reader-text">${chapterVerses.map(v=>`<span class="reader-verse" id="reader-${verseId(v)}"><sup class="reader-number">${v.verse}</sup>${escapeHtml(v.text)} </span>`).join('')}</div>
+        <button class="reader-next" onclick="nextReaderChapter()">Próximo capítulo →</button>`;
+
+      requestAnimationFrame(()=>{
+        const target=document.getElementById(`reader-${verseId(first)}`);
+        if(target) target.scrollIntoView({behavior:'auto',block:'center'});
+      });
+    }
+
+    function nextReaderChapter(){
+      if(!allBibleVerses.length) return;
+      const current=allBibleVerses[readerWindowStart];
+      const next=allBibleVerses.findIndex((v,i)=>i>readerWindowStart && (v.book!==current.book || v.chapter!==current.chapter));
+      if(next>=0) renderReaderWindow(next);
+    }
+
+    function scrollReaderToFirstUnread(){ renderReaderWindow(firstUnreadIndex()); }
+
     function renderVerticalWindow(index){
       const box=document.getElementById('verticalFeed');if(!box||!allBibleVerses.length)return;
       verticalWindowStart=Math.max(0,Math.min(index,allBibleVerses.length-1));
@@ -747,7 +794,7 @@
         allBibleVerses=normalizeBible(await response.json());
         if(!allBibleVerses.length)throw new Error('Formato não reconhecido');
         loadedGenesisVerses=allBibleVerses; // compatibilidade
-        renderFeedWindow(firstUnreadIndex());renderVerticalWindow(firstUnreadIndex());updateChapterReadStates();
+        renderFeedWindow(firstUnreadIndex());renderVerticalWindow(firstUnreadIndex());renderReaderWindow(firstUnreadIndex());updateChapterReadStates();
       }catch(err){
         console.error(err);bibleFeed.innerHTML=`<div class="api-error"><b>Não foi possível carregar a Bíblia.</b>
         ${err?.name==='AbortError'?'A requisição excedeu 15 segundos.':'Verifique a conexão e tente novamente.'}<br>
