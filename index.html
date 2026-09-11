@@ -115,6 +115,13 @@
     .reel-actions .vertical-read.read{color:#8ff0b9;border-color:#5cb77f}
     .reel-user{margin-top:18px;font-weight:800}.reel-user span{color:var(--accent2);font-size:12px;margin-left:4px}
 
+    .daily-page{min-height:calc(100vh - 180px);display:grid;place-items:center;padding:30px 22px 120px}
+    .daily-page-card{width:min(100%,560px);padding:30px 24px;border:1px solid var(--line);border-radius:24px;background:var(--panel);text-align:center}
+    .daily-label{font-size:11px;font-weight:900;letter-spacing:.16em;color:var(--accent2);margin-bottom:20px}
+    .daily-text{font-family:Georgia,serif;font-size:25px;line-height:1.55;color:#ddd9d1;margin:0}
+    .daily-ref{margin-top:20px;color:var(--accent2);font-weight:850}
+    .daily-share{margin-top:22px;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:999px;padding:11px 17px;font-weight:800}
+    @media(min-width:981px){.daily-tab{display:none}.mode-bottom-bar{grid-template-columns:repeat(4,1fr)}}
     .normal-reader{padding:24px 22px 115px;max-width:760px;margin:auto}
     .reader-book{font-family:Georgia,serif;font-size:30px;margin:5px 0 4px}
     .reader-chapter{font-size:13px;color:var(--accent2);font-weight:800;margin-bottom:20px;text-transform:uppercase;letter-spacing:.08em}
@@ -190,7 +197,7 @@
     .mobilebar{display:none}
     .mode-bottom-bar{
       position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;
-      width:min(560px,calc(100% - 32px));display:grid;grid-template-columns:repeat(4,1fr);
+      width:min(650px,calc(100% - 20px));display:grid;grid-template-columns:repeat(5,1fr);
       gap:5px;padding:6px;background:rgba(17,21,26,.94);backdrop-filter:blur(18px);
       border:1px solid var(--line);border-radius:18px;box-shadow:0 14px 45px rgba(0,0,0,.38)
     }
@@ -264,6 +271,17 @@
         </div>
       </section>
 
+      <section id="daily" class="view">
+        <div class="daily-page">
+          <div class="daily-page-card">
+            <div class="daily-label">VERSÍCULO DO DIA</div>
+            <p id="dailyText" class="daily-text">Carregando...</p>
+            <div id="dailyRef" class="daily-ref"></div>
+            <button id="dailyShare" class="daily-share">↗ Compartilhar</button>
+          </div>
+        </div>
+      </section>
+
       <section id="reader" class="view">
         <div class="normal-reader">
           <div id="normalReader"></div>
@@ -302,6 +320,9 @@
     <button class="mode-tab" data-view="vertical" onclick="showView('vertical')">
       <span class="mode-icon">▶</span>
       <span>Vertical</span>
+    </button>
+    <button class="mode-tab daily-tab" data-view="daily" onclick="showView('daily')">
+      <span class="mode-icon">✦</span><span>Dia</span>
     </button>
     <button class="mode-tab" data-view="reader" onclick="showView('reader')">
       <span class="mode-icon">≡</span>
@@ -814,6 +835,30 @@
       bookEl.querySelector('.book-chapters').insertAdjacentElement('afterend',panel);requestAnimationFrame(()=>requestAnimationFrame(()=>panel.classList.add('show')));
     }
 
+    let dailyVerse=null;
+    function getDailyVerse(){
+      if(!allBibleVerses.length) return null;
+      const d=new Date(), key=`${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+      let hash=2166136261;
+      for(const c of key){hash^=c.charCodeAt(0);hash=Math.imul(hash,16777619)}
+      return allBibleVerses[(hash>>>0)%allBibleVerses.length];
+    }
+    function renderDailyVerse(){
+      dailyVerse=getDailyVerse(); if(!dailyVerse)return;
+      const ref=`${dailyVerse.book} ${dailyVerse.chapter}:${dailyVerse.verse}`;
+      const text=`“${dailyVerse.text}”`;
+
+      document.getElementById('dailyText').textContent=text;
+      document.getElementById('dailyRef').textContent=ref;
+      document.getElementById('dailyShare').onclick=e=>shareVerse(verseId(dailyVerse),e);
+
+      // Atualiza o card fixo que já existe no desktop.
+      const desktopText=document.querySelector('.rightbar .quote');
+      const desktopRef=document.querySelector('.rightbar .verse-ref');
+      if(desktopText) desktopText.textContent=text;
+      if(desktopRef) desktopRef.textContent=ref;
+    }
+
     function findVerseById(id){
       return allBibleVerses.find(v=>verseId(v)===id);
     }
@@ -893,6 +938,7 @@
         if(!sharedOpened) renderFeedWindow(firstUnreadIndex());
         renderVerticalWindow(firstUnreadIndex());
         renderReaderWindow(firstUnreadIndex());
+        renderDailyVerse();
         updateChapterReadStates();
       }catch(err){
         console.error(err);bibleFeed.innerHTML=`<div class="api-error"><b>Não foi possível carregar a Bíblia.</b>
